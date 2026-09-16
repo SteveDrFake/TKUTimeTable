@@ -341,9 +341,31 @@ async function importJSON(file){
   }
 }
 
+let ssoWindow = null;
+let ssoTimer = null;
+
 function openTKUSSO(){
-  sessionStorage.setItem("tku_sso_return", location.href.split("#")[0]);
-  location.href = SSO_URL;
+  ssoWindow = window.open(
+    SSO_URL,
+    "tku_sso_login",
+    "popup,width=520,height=760,resizable=yes,scrollbars=yes"
+  );
+
+  if(!ssoWindow){
+    alert("瀏覽器阻擋了登入視窗。請允許這個網站開啟彈出視窗。");
+    return;
+  }
+
+  showMessage("請在淡江登入視窗完成登入。看到「登入成功」後，關閉登入視窗，再回本頁按「測試目前淡江登入 Session」。");
+
+  clearInterval(ssoTimer);
+  ssoTimer = setInterval(()=>{
+    if(!ssoWindow || ssoWindow.closed){
+      clearInterval(ssoTimer);
+      ssoWindow = null;
+      showMessage("淡江登入視窗已關閉。現在可以測試登入 Session。");
+    }
+  }, 700);
 }
 
 function readCallbackValues(){
@@ -400,9 +422,11 @@ function showMessage(text){
 function setSyncBusy(busy){
   const b1 = document.getElementById("syncButton");
   const b2 = document.getElementById("syncApiButton");
-  b1.disabled = busy; b2.disabled = busy;
+  const b3 = document.getElementById("testSessionButton");
+  b1.disabled = busy; b2.disabled = busy; b3.disabled = busy;
   b1.textContent = busy ? "同步中…" : "同步";
   b2.textContent = busy ? "同步中…" : "↻ 用目前登入狀態同步";
+  b3.textContent = busy ? "測試中…" : "🧪 測試目前淡江登入 Session";
 }
 
 function extractTokenFromResponse(text, response){
@@ -616,6 +640,68 @@ function hasAnyKey(obj, keys){
   return keys.some(k=>Object.prototype.hasOwnProperty.call(obj,k));
 }
 
+async function testBrowserSession(){
+  setSyncBusy(true);
+  showMessage("正在測試瀏覽器目前的淡江登入 Session…");
+
+  try{
+    const base = getApiBase();
+
+    // 第一個測試：完全不帶 q token。
+    // 目的不是直接假設 API 一定能用，而是確認登入後的瀏覽器
+    // cookie/session 是否能被 ilife API 接受。
+    const response = await fetch(base,{
+      method:"GET",
+      credentials:"include",
+      cache:"no-store"
+    });
+
+    const text = await response.text();
+    const contentType = response.headers.get("content-type") || "";
+
+    if(!response.ok){
+      throw new Error(`HTTP ${response.status}${text ? `；${text.slice(0,180)}` : ""}`);
+    }
+
+    let payload = null;
+    try{
+      payload = JSON.parse(text);
+    }catch{}
+
+    if(payload){
+      const normalized = normalizeILifeResponse(payload);
+
+      if(normalized.courses.length){
+        mergeImportedCourses(normalized);
+        saveState();
+        renderAll();
+        showMessage(`成功：瀏覽器登入 Session 可以取得課表，共 ${normalized.courses.length} 門課。`);
+        return true;
+      }
+
+      const keys = payload && typeof payload === "object" ? Object.keys(payload).slice(0,12).join(", ") : "";
+      showMessage(`API 有回應 JSON，但目前沒有辨識出課程。${keys ? ` 回應欄位：${keys}` : ""}`);
+      return false;
+    }
+
+    showMessage(`API 有回應，但不是 JSON。Content-Type：${contentType || "未提供"}`);
+    return false;
+
+  }catch(e){
+    console.error("testBrowserSession:", e);
+
+    const msg = String(e?.message || e);
+    if(msg.includes("Failed to fetch") || msg.includes("NetworkError")){
+      showMessage("瀏覽器無法讀取 iLife API。很可能是 CORS；下一步需要小型後端代理。");
+    }else{
+      showMessage(`Session 測試失敗：${msg}`);
+    }
+    return false;
+  }finally{
+    setSyncBusy(false);
+  }
+}
+
 async function syncFromButton(){
   const token = getToken();
   if(!token){
@@ -654,6 +740,7 @@ document.getElementById("showSeat").addEventListener("change",e=>{
   state.display.showSeat = e.target.checked; saveState(); renderSchedule();
 });
 document.getElementById("tkuLoginButton").addEventListener("click",openTKUSSO);
+document.getElementById("testSessionButton").addEventListener("click",testBrowserSession);
 document.getElementById("clearTokenButton").addEventListener("click",()=>{
   setToken("");
   renderHeader();

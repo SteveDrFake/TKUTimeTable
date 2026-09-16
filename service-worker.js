@@ -1,4 +1,4 @@
-const CACHE = "tku-web-v8";
+const CACHE = "tku-web-v9";
 const ASSETS = [
   "./",
   "./index.html",

@@ -356,14 +356,15 @@ function openTKUSSO(){
     return;
   }
 
-  showMessage("請在淡江登入視窗完成登入。看到「登入成功」後，關閉登入視窗，再回本頁按「測試目前淡江登入 Session」。");
+  showMessage("請在淡江登入視窗完成登入。看到「登入成功」後，請關閉登入視窗；關閉後本頁會自動測試登入狀態並嘗試同步課表。");
 
   clearInterval(ssoTimer);
-  ssoTimer = setInterval(()=>{
+  ssoTimer = setInterval(async ()=>{
     if(!ssoWindow || ssoWindow.closed){
       clearInterval(ssoTimer);
       ssoWindow = null;
-      showMessage("淡江登入視窗已關閉。現在可以測試登入 Session。");
+      showMessage("已偵測到淡江登入視窗關閉，正在自動取得登入狀態與課表…");
+      await testBrowserSession();
     }
   }, 700);
 }
@@ -680,7 +681,8 @@ async function testBrowserSession(){
       }
 
       const keys = payload && typeof payload === "object" ? Object.keys(payload).slice(0,12).join(", ") : "";
-      showMessage(`API 有回應 JSON，但目前沒有辨識出課程。${keys ? ` 回應欄位：${keys}` : ""}`);
+      console.log("iLife API JSON:", payload);
+      showMessage(`API 有回應 JSON，但目前沒有辨識出課程。${keys ? ` 回應欄位：${keys}` : ""}；請開啟瀏覽器開發者工具查看 Console 的實際回應。`);
       return false;
     }
 
@@ -704,12 +706,11 @@ async function testBrowserSession(){
 
 async function syncFromButton(){
   const token = getToken();
-  if(!token){
-    openSettings();
-    showMessage("尚未取得登入 Token。");
+  if(token){
+    await syncFromILife(token);
     return;
   }
-  await syncFromILife(token);
+  await testBrowserSession();
 }
 
 function openSettings(){

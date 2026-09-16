@@ -84,3 +84,20 @@ GitHub Pages 設為：
 - HTTP 401/403：表示 API 需要額外的 token／登入資訊。
 - `Failed to fetch`：瀏覽器很可能被 CORS 擋住，需要後端代理。
 - JSON 但沒有課程：代表 API 有回應，需要依實際 JSON 結構調整 parser。
+
+
+## v9 變更
+
+- 淡江登入視窗關閉後，網站會自動測試目前瀏覽器的淡江登入 Session。
+- 若沒有 Token，首頁上的「同步」也會直接先測試瀏覽器 Session。
+- 不會讀取或要求使用者提供密碼、Cookie、Token。
+
+
+## v10
+
+修正 v9 的前端檔案不同步問題：
+
+- `index.html` 補上 `testSessionButton`
+- `app.js` 對可選按鈕使用 optional chaining，單一按鈕缺失不會讓整個程式停止
+- 加入全域 JavaScript error / unhandled rejection 顯示
+- Service Worker cache 更新為 v10

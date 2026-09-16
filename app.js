@@ -730,8 +730,8 @@ document.getElementById("prevWeek").addEventListener("click",()=>{currentWeekOff
 document.getElementById("nextWeek").addEventListener("click",()=>{currentWeekOffset++;renderHeader();renderSchedule();});
 document.getElementById("todayButton").addEventListener("click",()=>{currentWeekOffset=0;renderHeader();renderSchedule();});
 document.getElementById("settingsButton").addEventListener("click",openSettings);
-document.getElementById("syncButton").addEventListener("click",syncFromButton);
-document.getElementById("syncApiButton").addEventListener("click",syncFromButton);
+document.getElementById("syncButton")?.addEventListener("click",syncFromButton);
+document.getElementById("syncApiButton")?.addEventListener("click",syncFromButton);
 document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",hideSheets));
 document.getElementById("overlay").addEventListener("click",e=>{if(e.target.id==="overlay")hideSheets();});
 document.getElementById("cancelCourse").addEventListener("click",hideSheets);
@@ -740,9 +740,9 @@ document.getElementById("addJournal").addEventListener("click",addJournal);
 document.getElementById("showSeat").addEventListener("change",e=>{
   state.display.showSeat = e.target.checked; saveState(); renderSchedule();
 });
-document.getElementById("tkuLoginButton").addEventListener("click",openTKUSSO);
-document.getElementById("testSessionButton").addEventListener("click",testBrowserSession);
-document.getElementById("clearTokenButton").addEventListener("click",()=>{
+document.getElementById("tkuLoginButton")?.addEventListener("click",openTKUSSO);
+document.getElementById("testSessionButton")?.addEventListener("click",testBrowserSession);
+document.getElementById("clearTokenButton")?.addEventListener("click",()=>{
   setToken("");
   renderHeader();
   showMessage("本機登入 Token 已清除。");
@@ -769,7 +769,22 @@ if("serviceWorker" in navigator){
   window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(console.error));
 }
 
+window.addEventListener("error", (event)=>{
+  console.error("App error:", event.error || event.message);
+  showMessage(`程式錯誤：${event.message || "未知錯誤"}`);
+});
+
+window.addEventListener("unhandledrejection", (event)=>{
+  console.error("Unhandled promise:", event.reason);
+  showMessage(`同步錯誤：${event.reason?.message || event.reason || "未知錯誤"}`);
+});
+
 (async()=>{
-  await handleSSOCallback();
-  renderAll();
+  try{
+    await handleSSOCallback();
+    renderAll();
+  }catch(e){
+    console.error("Startup error:", e);
+    showMessage(`啟動失敗：${e.message || e}`);
+  }
 })();

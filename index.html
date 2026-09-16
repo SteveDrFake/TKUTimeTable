@@ -1,180 +1,106 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1f2937">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="淡江課表">
-  <title>淡江課表</title>
-  <link rel="manifest" href="./manifest.json">
-  <link rel="stylesheet" href="./style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f2937">
+<link rel="manifest" href="./manifest.json">
+<link rel="stylesheet" href="./style.css">
+<title>淡江課表</title>
 </head>
 <body>
-  <div class="app-shell">
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-title">淡江課表</div>
-        <div id="semesterText" class="brand-subtitle">本機課表</div>
+<header class="topbar">
+  <div>
+    <div class="title">淡江課表</div>
+    <div id="subtitle" class="subtitle">尚未登入</div>
+  </div>
+  <div class="top-actions">
+    <button id="syncBtn" class="btn primary">同步</button>
+    <button id="settingsBtn" class="btn">設定</button>
+  </div>
+</header>
+
+<main class="page">
+  <section class="account">
+    <div>
+      <div id="studentName" class="student-name">尚未登入</div>
+      <div id="studentId" class="student-id">請先登入淡江帳號</div>
+    </div>
+    <span id="onlineState" class="pill">離線可用</span>
+  </section>
+
+  <section class="weekbar">
+    <button id="prevWeek" class="round">‹</button>
+    <button id="todayBtn" class="weekbtn"><strong>本週</strong><span id="weekText">—</span></button>
+    <button id="nextWeek" class="round">›</button>
+  </section>
+
+  <section class="table-wrap">
+    <div id="grid" class="grid"></div>
+  </section>
+
+  <section id="message" class="message hidden"></section>
+</main>
+
+<div id="overlay" class="overlay hidden">
+  <div id="settingsPanel" class="panel hidden">
+    <div class="panel-head">
+      <div><strong>設定</strong><small>帳號、同步與顯示</small></div>
+      <button class="close" data-close>×</button>
+    </div>
+    <div class="panel-body">
+
+      <h3>淡江帳號</h3>
+      <div class="box">
+        <div><span>姓名</span><b id="setName">尚未取得</b></div>
+        <div><span>學號</span><b id="setId">尚未取得</b></div>
+        <div><span>登入狀態</span><b id="setAuth">未登入</b></div>
       </div>
-      <div class="top-actions">
-        <button id="syncButton" class="top-btn primary" type="button">同步</button>
-        <button id="settingsButton" class="top-btn" type="button">設定</button>
+      <button id="loginBtn" class="wide primary">🔐 淡江登入</button>
+      <button id="sync2Btn" class="wide">↻ 同步課表</button>
+      <button id="directApiBtn" class="wide">🧪 直接測試淡江 /api/stu/course</button>
+      <button id="clearAuthBtn" class="wide danger-soft">清除本機登入狀態</button>
+
+      <h3>課表顯示</h3>
+      <div id="daySettings" class="toggle-grid"></div>
+      <div id="periodSettings" class="toggle-grid"></div>
+      <label class="switch"><span>顯示座號</span><input id="showSeat" type="checkbox"></label>
+
+      <h3>本機資料</h3>
+      <button id="demoBtn" class="wide">載入範例課表</button>
+      <button id="clearBtn" class="wide">清除課表</button>
+      <button id="exportBtn" class="wide">匯出 JSON</button>
+      <label class="wide file">匯入 JSON<input id="importBtn" type="file" accept="application/json,.json"></label>
+      <button id="wipeBtn" class="wide danger">清除全部本機資料</button>
+
+      <h3>後端 API</h3>
+      <label class="field"><span>Backend URL（可留空）</span><input id="backendUrl"></label>
+      <button id="saveBackendBtn" class="wide">儲存 Backend URL</button>
+      <div class="hint">
+        預設會使用與本 GitHub Pages 不同來源的後端。後端負責處理 TKU 登入與 iLife API，前端不直接呼叫 ilifeapi。
       </div>
-    </header>
-
-    <main class="page">
-      <section class="account-bar">
-        <div class="account-main">
-          <div id="studentName" class="student-name">尚未登入</div>
-          <div id="studentInfo" class="student-info">可先使用範例資料測試課表</div>
-        </div>
-        <div id="networkStatus" class="status-pill">離線可用</div>
-      </section>
-
-      <section class="week-toolbar">
-        <button id="prevWeek" class="circle-btn" type="button" aria-label="上一週">‹</button>
-        <button id="todayButton" class="week-title-btn" type="button">
-          <strong>本週</strong>
-          <span id="weekText">—</span>
-        </button>
-        <button id="nextWeek" class="circle-btn" type="button" aria-label="下一週">›</button>
-      </section>
-
-      <section class="schedule-wrap">
-        <div id="schedule" class="schedule-grid" aria-label="課表"></div>
-      </section>
-
-      <section id="messagePanel" class="message-panel hidden"></section>
-    </main>
+    </div>
   </div>
 
-  <div id="overlay" class="overlay hidden">
-    <section id="coursePanel" class="sheet hidden" role="dialog" aria-modal="true">
-      <header class="sheet-header">
-        <div>
-          <div id="courseTitle" class="sheet-title">課程</div>
-          <div id="courseSubtitle" class="sheet-subtitle"></div>
-        </div>
-        <button class="close-btn" data-close type="button">×</button>
-      </header>
-      <div class="sheet-body">
-        <label class="field">
-          <span>顯示課程名稱</span>
-          <input id="customName" type="text" placeholder="留空＝使用學校原名稱">
-        </label>
-
-        <div class="detail-grid">
-          <div><span>原課名</span><strong id="schoolName">—</strong></div>
-          <div><span>開課序號</span><strong id="courseIdText">—</strong></div>
-          <div><span>座號</span><strong id="seatNumber">—</strong></div>
-          <div><span>學分</span><strong id="credits">—</strong></div>
-          <div><span>系所</span><strong id="department">—</strong></div>
-          <div><span>年級／班別</span><strong id="gradeClass">—</strong></div>
-        </div>
-
-        <section>
-          <h3>上課時段</h3>
-          <div id="timesList" class="stack"></div>
-        </section>
-
-        <div id="courseLinks" class="course-links"></div>
-
-        <label class="field">
-          <span>課程說明</span>
-          <textarea id="description" rows="4" readonly></textarea>
-        </label>
-
-        <label class="field">
-          <span>我的備註</span>
-          <textarea id="note" rows="4" placeholder="自己的備註"></textarea>
-        </label>
-
-        <section>
-          <div class="section-head">
-            <h3>我的記事</h3>
-            <button id="addJournal" class="small-btn" type="button">＋新增</button>
-          </div>
-          <div id="journalList" class="stack"></div>
-        </section>
-      </div>
-      <footer class="sheet-footer">
-        <button id="cancelCourse" class="btn" type="button">取消</button>
-        <button id="saveCourseButton" class="btn primary" type="button">儲存</button>
-      </footer>
-    </section>
-
-    <section id="settingsPanel" class="sheet hidden settings-sheet" role="dialog" aria-modal="true">
-      <header class="sheet-header">
-        <div>
-          <div class="sheet-title">設定</div>
-          <div class="sheet-subtitle">顯示方式、淡江登入與資料</div>
-        </div>
-        <button class="close-btn" data-close type="button">×</button>
-      </header>
-
-      <div class="sheet-body">
-        <section>
-          <h3>顯示星期</h3>
-          <div id="dayChecks" class="toggle-grid"></div>
-        </section>
-
-        <section>
-          <h3>顯示節次</h3>
-          <div id="periodChecks" class="toggle-grid"></div>
-        </section>
-
-        <section>
-          <h3>課程卡片</h3>
-          <label class="switch-row">
-            <span>顯示座號</span>
-            <input id="showSeat" type="checkbox">
-          </label>
-        </section>
-
-        <section>
-          <h3>淡江 SSO／iLife</h3>
-          <div class="account-box">
-            <div><span>姓名</span><strong id="settingStudentName">尚未取得</strong></div>
-            <div><span>學號</span><strong id="settingStudentId">尚未取得</strong></div>
-            <div><span>Token 狀態</span><strong id="tokenStatus">未取得</strong></div>
-          </div>
-          <button id="tkuLoginButton" class="full-btn primary" type="button">🔐 開啟淡江登入</button>
-          <button id="testSessionButton" class="full-btn" type="button">🧪 測試目前淡江登入 Session</button>
-          <button id="syncApiButton" class="full-btn" type="button">↻ 用目前登入狀態同步</button>
-          <button id="clearTokenButton" class="full-btn danger-soft" type="button">清除本機登入 Token</button>
-          <p class="hint">
-            本版本按照你提供的 iCampusPass APK 所呈現的登入入口與 iLife 課表 API 架構製作。
-            APK 沒有公開給網頁版使用的 callback 規格，因此程式只會在 SSO 將 token／q 參數導回本頁時自動接手，不會自行猜測登入結果。
-          </p>
-        </section>
-
-        <section>
-          <h3>本機資料</h3>
-          <button id="loadDemo" class="full-btn" type="button">載入範例課表</button>
-          <button id="clearCoursesButton" class="full-btn" type="button">🗑 清除課表</button>
-          <button id="exportData" class="full-btn" type="button">匯出 JSON</button>
-          <label class="full-btn file-btn">
-            匯入 JSON
-            <input id="importData" type="file" accept=".json,application/json">
-          </label>
-          <button id="logoutAppButton" class="full-btn danger" type="button">清除本機全部資料</button>
-        </section>
-
-        <section>
-          <h3>API 設定</h3>
-          <label class="field">
-            <span>iLife API 基底網址</span>
-            <input id="apiBaseInput" type="url">
-          </label>
-          <button id="saveApiBaseButton" class="full-btn" type="button">儲存 API 設定</button>
-          <p class="hint">預設值來自你提供的 iCampusPass APK 字串。若淡江之後更改 API，才能在這裡調整。</p>
-        </section>
-      </div>
-    </section>
+  <div id="coursePanel" class="panel hidden">
+    <div class="panel-head">
+      <div><strong id="courseTitle">課程</strong><small id="courseSub"></small></div>
+      <button class="close" data-close>×</button>
+    </div>
+    <div class="panel-body">
+      <label class="field"><span>自訂課名</span><input id="customName" placeholder="留空使用學校名稱"></label>
+      <div id="courseInfo" class="info-grid"></div>
+      <h3>上課時間</h3><div id="timeList"></div>
+      <label class="field"><span>課程說明</span><textarea id="desc" rows="4" readonly></textarea></label>
+      <label class="field"><span>我的備註</span><textarea id="note" rows="4"></textarea></label>
+      <h3>我的記事</h3>
+      <button id="addJournal" class="wide">＋新增記事</button>
+      <div id="journalList"></div>
+      <button id="saveCourse" class="wide primary">儲存</button>
+    </div>
   </div>
+</div>
 
-  <script src="./app.js"></script>
+<script src="./app.js"></script>
 </body>
 </html>

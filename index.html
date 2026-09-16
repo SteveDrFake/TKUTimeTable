@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f2937">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="淡江課表">
+  <title>淡江課表</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-title">淡江課表</div>
+        <div id="semesterText" class="brand-subtitle">本機課表</div>
+      </div>
+      <div class="top-actions">
+        <button id="syncButton" class="top-btn primary" type="button">同步</button>
+        <button id="settingsButton" class="top-btn" type="button">設定</button>
+      </div>
+    </header>
+
+    <main class="page">
+      <section class="account-bar">
+        <div class="account-main">
+          <div id="studentName" class="student-name">尚未登入</div>
+          <div id="studentInfo" class="student-info">可先使用範例資料測試課表</div>
+        </div>
+        <div id="networkStatus" class="status-pill">離線可用</div>
+      </section>
+
+      <section class="week-toolbar">
+        <button id="prevWeek" class="circle-btn" type="button" aria-label="上一週">‹</button>
+        <button id="todayButton" class="week-title-btn" type="button">
+          <strong>本週</strong>
+          <span id="weekText">—</span>
+        </button>
+        <button id="nextWeek" class="circle-btn" type="button" aria-label="下一週">›</button>
+      </section>
+
+      <section class="schedule-wrap">
+        <div id="schedule" class="schedule-grid" aria-label="課表"></div>
+      </section>
+
+      <section id="messagePanel" class="message-panel hidden"></section>
+    </main>
+  </div>
+
+  <div id="overlay" class="overlay hidden">
+    <section id="coursePanel" class="sheet hidden" role="dialog" aria-modal="true">
+      <header class="sheet-header">
+        <div>
+          <div id="courseTitle" class="sheet-title">課程</div>
+          <div id="courseSubtitle" class="sheet-subtitle"></div>
+        </div>
+        <button class="close-btn" data-close type="button">×</button>
+      </header>
+      <div class="sheet-body">
+        <label class="field">
+          <span>顯示課程名稱</span>
+          <input id="customName" type="text" placeholder="留空＝使用學校原名稱">
+        </label>
+
+        <div class="detail-grid">
+          <div><span>原課名</span><strong id="schoolName">—</strong></div>
+          <div><span>開課序號</span><strong id="courseIdText">—</strong></div>
+          <div><span>座號</span><strong id="seatNumber">—</strong></div>
+          <div><span>學分</span><strong id="credits">—</strong></div>
+          <div><span>系所</span><strong id="department">—</strong></div>
+          <div><span>年級／班別</span><strong id="gradeClass">—</strong></div>
+        </div>
+
+        <section>
+          <h3>上課時段</h3>
+          <div id="timesList" class="stack"></div>
+        </section>
+
+        <div id="courseLinks" class="course-links"></div>
+
+        <label class="field">
+          <span>課程說明</span>
+          <textarea id="description" rows="4" readonly></textarea>
+        </label>
+
+        <label class="field">
+          <span>我的備註</span>
+          <textarea id="note" rows="4" placeholder="自己的備註"></textarea>
+        </label>
+
+        <section>
+          <div class="section-head">
+            <h3>我的記事</h3>
+            <button id="addJournal" class="small-btn" type="button">＋新增</button>
+          </div>
+          <div id="journalList" class="stack"></div>
+        </section>
+      </div>
+      <footer class="sheet-footer">
+        <button id="cancelCourse" class="btn" type="button">取消</button>
+        <button id="saveCourseButton" class="btn primary" type="button">儲存</button>
+      </footer>
+    </section>
+
+    <section id="settingsPanel" class="sheet hidden settings-sheet" role="dialog" aria-modal="true">
+      <header class="sheet-header">
+        <div>
+          <div class="sheet-title">設定</div>
+          <div class="sheet-subtitle">顯示方式、淡江登入與資料</div>
+        </div>
+        <button class="close-btn" data-close type="button">×</button>
+      </header>
+
+      <div class="sheet-body">
+        <section>
+          <h3>顯示星期</h3>
+          <div id="dayChecks" class="toggle-grid"></div>
+        </section>
+
+        <section>
+          <h3>顯示節次</h3>
+          <div id="periodChecks" class="toggle-grid"></div>
+        </section>
+
+        <section>
+          <h3>課程卡片</h3>
+          <label class="switch-row">
+            <span>顯示座號</span>
+            <input id="showSeat" type="checkbox">
+          </label>
+        </section>
+
+        <section>
+          <h3>淡江 SSO／iLife</h3>
+          <div class="account-box">
+            <div><span>姓名</span><strong id="settingStudentName">尚未取得</strong></div>
+            <div><span>學號</span><strong id="settingStudentId">尚未取得</strong></div>
+            <div><span>Token 狀態</span><strong id="tokenStatus">未取得</strong></div>
+          </div>
+          <button id="tkuLoginButton" class="full-btn primary" type="button">🔐 前往淡江登入</button>
+          <button id="syncApiButton" class="full-btn" type="button">↻ 用目前登入狀態同步</button>
+          <button id="clearTokenButton" class="full-btn danger-soft" type="button">清除本機登入 Token</button>
+          <p class="hint">
+            本版本按照你提供的 iCampusPass APK 所呈現的登入入口與 iLife 課表 API 架構製作。
+            APK 沒有公開給網頁版使用的 callback 規格，因此程式只會在 SSO 將 token／q 參數導回本頁時自動接手，不會自行猜測登入結果。
+          </p>
+        </section>
+
+        <section>
+          <h3>本機資料</h3>
+          <button id="loadDemo" class="full-btn" type="button">載入範例課表</button>
+          <button id="clearCoursesButton" class="full-btn" type="button">🗑 清除課表</button>
+          <button id="exportData" class="full-btn" type="button">匯出 JSON</button>
+          <label class="full-btn file-btn">
+            匯入 JSON
+            <input id="importData" type="file" accept=".json,application/json">
+          </label>
+          <button id="logoutAppButton" class="full-btn danger" type="button">清除本機全部資料</button>
+        </section>
+
+        <section>
+          <h3>API 設定</h3>
+          <label class="field">
+            <span>iLife API 基底網址</span>
+            <input id="apiBaseInput" type="url">
+          </label>
+          <button id="saveApiBaseButton" class="full-btn" type="button">儲存 API 設定</button>
+          <p class="hint">預設值來自你提供的 iCampusPass APK 字串。若淡江之後更改 API，才能在這裡調整。</p>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

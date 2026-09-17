@@ -745,7 +745,7 @@ document.getElementById("showSeat").addEventListener("change",e=>{
   state.display.showSeat = e.target.checked; saveState(); renderSchedule();
 });
 document.getElementById("tkuLoginButton").addEventListener("click",openTKUSSO);
-document.getElementById("testSessionButton").addEventListener("click",testBrowserSession);
+document.getElementById("testSessionButton")?.addEventListener("click",testBrowserSession);
 document.getElementById("clearTokenButton").addEventListener("click",()=>{
   setToken("");
   renderHeader();

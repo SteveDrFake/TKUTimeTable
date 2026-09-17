@@ -1,6 +1,7 @@
-const STORAGE_KEY = "tku_timetable_v7";
-const TOKEN_KEY = "tku_sso_token_v7";
-const API_KEY = "tku_ilife_api_v7";
+const STORAGE_KEY = "tku_timetable_v10";
+const TOKEN_KEY = "tku_sso_token_v10";
+const API_KEY = "tku_ilife_api_v11";
+const DIRECT_BROWSER_API = "https://ilifeapp.az.tku.edu.tw/api/stu/course";
 const DEFAULT_API = "https://ilifeapi.az.tku.edu.tw/api/ilifeStuClassApi";
 const SSO_URL = "https://sso.tku.edu.tw/ilife/CoWork/AndroidSsoLogin.cshtml";
 
@@ -22,7 +23,7 @@ const DEFAULT_DISPLAY = {
 };
 
 const DEMO = {
-  version:7,
+  version:10,
   semester:"115-1 範例",
   student:{name:"範例學生",studentId:"DEMO0000"},
   display:JSON.parse(JSON.stringify(DEFAULT_DISPLAY)),
@@ -60,7 +61,7 @@ let currentCourseId = null;
 
 function normalise(data){
   const x = data && typeof data==="object" ? data : {};
-  x.version = 7;
+  x.version = 11;
   x.semester = x.semester || "";
   x.student = x.student || {name:"",studentId:""};
   x.display = {
@@ -111,6 +112,9 @@ function renderHeader(){
   document.getElementById("settingStudentId").textContent = state.student?.studentId || "尚未取得";
   document.getElementById("tokenStatus").textContent = getToken() ? "已保存本機 Token" : "未取得";
   document.getElementById("apiBaseInput").value = getApiBase();
+  const bookmarklet = makeCaptureBookmarklet();
+  const bookmarkInput = document.getElementById("captureBookmarkletInput");
+  if(bookmarkInput) bookmarkInput.value = bookmarklet;
 
   const mon = getMonday(currentWeekOffset);
   const sun = new Date(mon); sun.setDate(sun.getDate()+6);
@@ -344,6 +348,59 @@ async function importJSON(file){
 let ssoWindow = null;
 let ssoTimer = null;
 
+function makeCaptureBookmarklet(){
+  const appUrl = new URL(location.href);
+  appUrl.search = "";
+  appUrl.hash = "";
+  const appTarget = appUrl.toString();
+  const code = `(async()=>{try{const t=document.body?document.body.innerText:"";if(!t){alert("找不到 API 回應內容");return;}if(window.opener&&!window.opener.closed){window.opener.postMessage({type:"TKU_ILIFE_API_TEXT",text:t},"*");alert("已把課表資料送回課表網頁");try{window.close()}catch{}}else{location.href=${JSON.stringify(appTarget+"#tku_api=")}+encodeURIComponent(t)}}catch(e){alert("抓取失敗："+(e&&e.message||e))}})()`;
+  return "javascript:" + code;
+}
+
+function openILifeApiPopup(){
+  const w=window.open(DIRECT_BROWSER_API,"tku_ilife_api","popup,width=1100,height=850,resizable=yes,scrollbars=yes");
+  if(!w){
+    alert("瀏覽器阻擋了 API 視窗。請允許這個網站開啟彈出視窗。");
+    return;
+  }
+  showMessage("API 視窗已開啟。若要求登入，先完成淡江登入；等畫面變成 JSON 後，在該視窗執行「TKU 抓課表」書籤，即可把真實課表送回本頁。");
+}
+
+function importBrowserApiText(text, source="browser"){
+  try{
+    const clean=String(text||"").trim().replace(/^\uFEFF/,"");
+    if(!clean) throw new Error("沒有收到資料");
+    let payload;
+    try{payload=JSON.parse(clean)}catch{
+      const a=clean.indexOf("[");
+      const b=clean.lastIndexOf("]");
+      if(a>=0&&b>a) payload=JSON.parse(clean.slice(a,b+1));
+      else throw new Error("收到的內容不是 JSON");
+    }
+    const normalized=normalizeILifeResponse(payload);
+    if(!normalized.courses.length) throw new Error("API 回應中沒有辨識到課程時段");
+    mergeImportedCourses(normalized);
+    saveState();
+    renderAll();
+    showMessage(`成功從 TKU API 取得 ${normalized.courses.length} 門課程。`);
+    return true;
+  }catch(e){
+    console.error("importBrowserApiText:",e);
+    showMessage(`API 資料匯入失敗：${e.message}`);
+    return false;
+  }
+}
+
+function handleBrowserApiHash(){
+  const h=new URL(location.href);
+  const raw=h.hash.startsWith("#tku_api=") ? decodeURIComponent(h.hash.slice("#tku_api=".length)) : "";
+  if(!raw) return false;
+  const ok=importBrowserApiText(raw,"hash");
+  h.hash="";
+  history.replaceState({},document.title,h.pathname+h.search);
+  return ok;
+}
+
 function openTKUSSO(){
   ssoWindow = window.open(
     SSO_URL,
@@ -423,10 +480,9 @@ function setSyncBusy(busy){
   const b1 = document.getElementById("syncButton");
   const b2 = document.getElementById("syncApiButton");
   const b3 = document.getElementById("testSessionButton");
-  b1.disabled = busy; b2.disabled = busy; b3.disabled = busy;
-  b1.textContent = busy ? "同步中…" : "同步";
-  b2.textContent = busy ? "同步中…" : "↻ 用目前登入狀態同步";
-  b3.textContent = busy ? "測試中…" : "🧪 測試目前淡江登入 Session";
+  if(b1){ b1.disabled = busy; b1.textContent = busy ? "同步中…" : "同步"; }
+  if(b2){ b2.disabled = busy; b2.textContent = busy ? "同步中…" : "↻ 用目前登入狀態同步"; }
+  if(b3){ b3.disabled = busy; b3.textContent = busy ? "測試中…" : "🧪 測試目前淡江登入 Session"; }
 }
 
 function extractTokenFromResponse(text, response){
@@ -498,13 +554,42 @@ function mergeImportedCourses(data){
   if(data.studentName) state.student.name = data.studentName;
 }
 
+function normalizeKnownILifeCourseArray(list){
+  if(!Array.isArray(list)) return [];
+  const groups = new Map();
+  for(const row of list){
+    if(!row || typeof row !== "object") continue;
+    const name = String(row.ch_cos_name ?? row.courseName ?? "").trim();
+    if(!name) continue;
+    const seat = String(row.seatno ?? row.seatNumber ?? "").trim();
+    const key = `${name}\u0000${seat}`;
+    if(!groups.has(key)) groups.set(key,{
+      id:String(row.courseId ?? row.course_id ?? `ilife-${Array.from(key).reduce((a,ch)=>((a*31+ch.charCodeAt(0))>>>0),7)}`),
+      name,customName:"",department:"",grade:"",className:"",credits:"",seatNumber:seat,pdf:"",description:String(row.note ?? ""),times:[],note:"",journal:[]
+    });
+    const c=groups.get(key);
+    const day=parseDay(row.weekno ?? row.week ?? row.weekday);
+    const periods=parsePeriods(row.sessno ?? row.period ?? row.section);
+    if(day && periods.length){
+      const teacher=String(row.teach_name ?? row.teacher ?? "").trim();
+      const room=String(row.room ?? row.classroom ?? "").replace(/\s+/g," ").trim();
+      const sig=JSON.stringify([day,periods,room,teacher]);
+      if(!c.times.some(t=>JSON.stringify([t.day,t.periods,t.room,t.teacher])===sig)) c.times.push({day,periods,room,teacher});
+    }
+  }
+  return [...groups.values()].filter(c=>c.times.length);
+}
+
 function normalizeILifeResponse(payload){
   const root = unwrapPayload(payload);
   const list = findCourseArray(root);
-  const courses = [];
-  for(const item of list){
-    const c = normalizeCourse(item);
-    if(c) courses.push(c);
+  const knownCourses = normalizeKnownILifeCourseArray(list);
+  const courses = knownCourses.length ? knownCourses : [];
+  if(!courses.length){
+    for(const item of list){
+      const c = normalizeCourse(item);
+      if(c) courses.push(c);
+    }
   }
   return {
     semester: findAny(root, ["semester","term","schoolYearSemester","學期"]) || "",
@@ -715,6 +800,9 @@ async function syncFromButton(){
 function openSettings(){
   renderSettings();
   document.getElementById("apiBaseInput").value = getApiBase();
+  const bookmarklet = makeCaptureBookmarklet();
+  const bookmarkInput = document.getElementById("captureBookmarkletInput");
+  if(bookmarkInput) bookmarkInput.value = bookmarklet;
   showSheet("settingsPanel");
 }
 
@@ -746,6 +834,20 @@ document.getElementById("clearTokenButton").addEventListener("click",()=>{
   renderHeader();
   showMessage("本機登入 Token 已清除。");
 });
+document.getElementById("importILifeJsonButton").addEventListener("click",()=>{
+  try{
+    const raw=document.getElementById("ilifeJsonInput").value.trim();
+    if(!raw) throw new Error("請先貼上 JSON");
+    const payload=JSON.parse(raw);
+    const normalized=normalizeILifeResponse(payload);
+    if(!normalized.courses.length) throw new Error("JSON 中找不到可辨識的課程時段");
+    mergeImportedCourses(normalized);
+    saveState(); renderAll();
+    document.getElementById("ilifeJsonInput").value="";
+    showMessage(`iLife JSON 匯入完成：${normalized.courses.length} 門課程。`);
+  }catch(e){ alert(`iLife JSON 匯入失敗：${e.message}`); }
+});
+
 document.getElementById("loadDemo").addEventListener("click",loadDemo);
 document.getElementById("clearCoursesButton").addEventListener("click",clearCourses);
 document.getElementById("logoutAppButton").addEventListener("click",logoutApp);
@@ -753,6 +855,18 @@ document.getElementById("exportData").addEventListener("click",exportJSON);
 document.getElementById("importData").addEventListener("change",e=>{
   const f=e.target.files?.[0]; if(f) importJSON(f); e.target.value="";
 });
+document.getElementById("openIlifeApiButton").addEventListener("click",openILifeApiPopup);
+document.getElementById("copyCaptureBookmarkletButton").addEventListener("click",async()=>{
+  const text=makeCaptureBookmarklet();
+  try{await navigator.clipboard.writeText(text);showMessage("已複製「TKU 抓課表」書籤程式。請用 Ctrl+D 新增書籤，再把網址貼上。");}
+  catch{const el=document.getElementById("captureBookmarkletInput");el.focus();el.select();showMessage("瀏覽器不允許自動複製，已選取書籤程式，請按 Ctrl+C。");}
+});
+
+window.addEventListener("message",event=>{
+  if(!event.origin || !event.origin.endsWith(".tku.edu.tw")) return;
+  if(event.data?.type === "TKU_ILIFE_API_TEXT") importBrowserApiText(event.data.text,"postMessage");
+});
+
 document.getElementById("saveApiBaseButton").addEventListener("click",()=>{
   const v = document.getElementById("apiBaseInput").value.trim();
   if(!/^https?:\/\//i.test(v)){ alert("API 網址格式不正確。"); return; }
@@ -771,4 +885,5 @@ if("serviceWorker" in navigator){
 (async()=>{
   await handleSSOCallback();
   renderAll();
+  handleBrowserApiHash();
 })();

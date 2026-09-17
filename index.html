@@ -7,7 +7,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="淡江課表">
-  <title>淡江課表 v9</title>
+  <title>淡江課表 v10</title>
   <link rel="manifest" href="./manifest.json">
   <link rel="stylesheet" href="./style.css">
 </head>
@@ -142,11 +142,25 @@
           </div>
           <button id="tkuLoginButton" class="full-btn primary" type="button">🔐 前往淡江登入</button>
           <button id="syncApiButton" class="full-btn" type="button">↻ 用目前登入狀態同步</button>
+          <button id="testSessionButton" class="full-btn" type="button">🧪 測試目前淡江登入 Session</button>
+          <button id="openIlifeApiButton" class="full-btn primary" type="button">📥 開啟 TKU 課表 API</button>
           <button id="clearTokenButton" class="full-btn danger-soft" type="button">清除本機登入 Token</button>
           <p class="hint">
-            本版本按照你提供的 iCampusPass APK 所呈現的登入入口與 iLife 課表 API 架構製作。
-            APK 沒有公開給網頁版使用的 callback 規格，因此程式只會在 SSO 將 token／q 參數導回本頁時自動接手，不會自行猜測登入結果。
+            新增「真實 API 抓取測試」：先開啟 TKU 課表 API；完成淡江登入後，當畫面顯示 JSON，使用一次「TKU 抓課表」書籤，就會把 API 回應傳回本頁並自動整理成課表。這個方法不會把你的帳號密碼交給本網站。
           </p>
+          <section class="capture-box">
+            <h4>第一次使用：建立「TKU 抓課表」書籤</h4>
+            <p class="hint">先按「複製書籤程式」，再用 Ctrl+D 新增書籤，名稱填 <strong>TKU 抓課表</strong>，網址貼上剛剛複製的內容。</p>
+            <button id="copyCaptureBookmarkletButton" class="full-btn" type="button">📋 複製「TKU 抓課表」書籤程式</button>
+            <textarea id="captureBookmarkletInput" rows="4" readonly spellcheck="false"></textarea>
+          </section>
+        </section>
+
+        <section>
+          <h3>iLife 課表 JSON</h3>
+          <p class="hint">如果你已取得 iLife 課表 JSON，可以直接貼上匯入。程式會依「課名＋座號」合併同一門課的多個時段。</p>
+          <textarea id="ilifeJsonInput" rows="7" placeholder='例如：[ {"weekno":"1","sessno":"01","seatno":"033","ch_cos_name":"高等微積分","teach_name":"余成義","room":"S 420"} ]'></textarea>
+          <button id="importILifeJsonButton" class="full-btn" type="button">匯入 iLife JSON</button>
         </section>
 
         <section>

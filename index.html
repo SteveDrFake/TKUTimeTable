@@ -2,192 +2,89 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#1f2937">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="淡江課表">
-  <title>淡江課表 v10</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
   <link rel="manifest" href="./manifest.json">
   <link rel="stylesheet" href="./style.css">
+  <title>TKU 課表</title>
 </head>
 <body>
-  <div class="app-shell">
+  <div id="app">
     <header class="topbar">
-      <div class="brand">
-        <div class="brand-title">淡江課表</div>
-        <div id="semesterText" class="brand-subtitle">本機課表</div>
-      </div>
-      <div class="top-actions">
-        <button id="syncButton" class="top-btn primary" type="button">同步</button>
-        <button id="settingsButton" class="top-btn" type="button">設定</button>
-      </div>
+      <div class="brand"><strong>TKU 課表</strong><span id="semesterText">本機課表</span></div>
+      <button id="settingsButton" class="top-btn" type="button">設定</button>
     </header>
 
-    <main class="page">
-      <section class="account-bar">
-        <div class="account-main">
-          <div id="studentName" class="student-name">尚未登入</div>
-          <div id="studentInfo" class="student-info">可先使用範例資料測試課表</div>
-        </div>
-        <div id="networkStatus" class="status-pill">離線可用</div>
+    <main>
+      <section class="student-bar">
+        <div><strong id="studentName">尚未登入</strong><div id="studentInfo">可先使用範例資料測試課表</div></div>
+        <div id="networkStatus" class="status-pill">目前有網路</div>
       </section>
-
-      <section class="week-toolbar">
-        <button id="prevWeek" class="circle-btn" type="button" aria-label="上一週">‹</button>
-        <button id="todayButton" class="week-title-btn" type="button">
-          <strong>本週</strong>
-          <span id="weekText">—</span>
-        </button>
-        <button id="nextWeek" class="circle-btn" type="button" aria-label="下一週">›</button>
+      <section class="week-nav">
+        <button id="prevWeek" class="btn" type="button">←</button>
+        <button id="todayButton" class="btn" type="button">本週</button>
+        <strong id="weekText"></strong>
+        <button id="nextWeek" class="btn" type="button">→</button>
       </section>
-
-      <section class="schedule-wrap">
-        <div id="schedule" class="schedule-grid" aria-label="課表"></div>
-      </section>
-
-      <section id="messagePanel" class="message-panel hidden"></section>
+      <div id="schedule" class="schedule"></div>
     </main>
-  </div>
 
-  <div id="overlay" class="overlay hidden">
-    <section id="coursePanel" class="sheet hidden" role="dialog" aria-modal="true">
-      <header class="sheet-header">
-        <div>
-          <div id="courseTitle" class="sheet-title">課程</div>
-          <div id="courseSubtitle" class="sheet-subtitle"></div>
-        </div>
-        <button class="close-btn" data-close type="button">×</button>
-      </header>
+    <button id="syncButton" class="floating-sync" type="button">同步課表</button>
+    <div id="messagePanel" class="message hidden"></div>
+    <div id="overlay" class="overlay hidden"></div>
+
+    <section id="coursePanel" class="sheet hidden course-sheet" role="dialog" aria-modal="true">
+      <header class="sheet-header"><div><div id="courseTitle" class="sheet-title">課程</div><div id="courseSubtitle" class="sheet-subtitle"></div></div><button class="close-btn" data-close type="button">×</button></header>
       <div class="sheet-body">
-        <label class="field">
-          <span>顯示課程名稱</span>
-          <input id="customName" type="text" placeholder="留空＝使用學校原名稱">
-        </label>
-
-        <div class="detail-grid">
-          <div><span>原課名</span><strong id="schoolName">—</strong></div>
-          <div><span>開課序號</span><strong id="courseIdText">—</strong></div>
-          <div><span>座號</span><strong id="seatNumber">—</strong></div>
-          <div><span>學分</span><strong id="credits">—</strong></div>
-          <div><span>系所</span><strong id="department">—</strong></div>
-          <div><span>年級／班別</span><strong id="gradeClass">—</strong></div>
+        <label class="field"><span>自訂名稱</span><input id="customName" type="text"></label>
+        <div class="info-grid">
+          <div><span>原課名</span><strong id="schoolName">—</strong></div><div><span>開課序號</span><strong id="courseIdText">—</strong></div>
+          <div><span>座號</span><strong id="seatNumber">—</strong></div><div><span>學分</span><strong id="credits">—</strong></div>
+          <div><span>系所</span><strong id="department">—</strong></div><div><span>年級／班別</span><strong id="gradeClass">—</strong></div>
         </div>
-
-        <section>
-          <h3>上課時段</h3>
-          <div id="timesList" class="stack"></div>
-        </section>
-
-        <div id="courseLinks" class="course-links"></div>
-
-        <label class="field">
-          <span>課程說明</span>
-          <textarea id="description" rows="4" readonly></textarea>
-        </label>
-
-        <label class="field">
-          <span>我的備註</span>
-          <textarea id="note" rows="4" placeholder="自己的備註"></textarea>
-        </label>
-
-        <section>
-          <div class="section-head">
-            <h3>我的記事</h3>
-            <button id="addJournal" class="small-btn" type="button">＋新增</button>
-          </div>
-          <div id="journalList" class="stack"></div>
-        </section>
+        <h3>上課時間</h3><div id="timesList"></div>
+        <div id="courseLinks"></div>
+        <label class="field"><span>課程描述</span><textarea id="description" rows="4"></textarea></label>
+        <label class="field"><span>備註</span><textarea id="note" rows="3"></textarea></label>
+        <h3>記事</h3><div id="journalList"></div><button id="addJournal" class="full-btn" type="button">新增記事</button>
       </div>
-      <footer class="sheet-footer">
-        <button id="cancelCourse" class="btn" type="button">取消</button>
-        <button id="saveCourseButton" class="btn primary" type="button">儲存</button>
-      </footer>
+      <footer class="sheet-footer"><button id="cancelCourse" class="btn" type="button">取消</button><button id="saveCourseButton" class="btn primary" type="button">儲存</button></footer>
     </section>
 
     <section id="settingsPanel" class="sheet hidden settings-sheet" role="dialog" aria-modal="true">
-      <header class="sheet-header">
-        <div>
-          <div class="sheet-title">設定</div>
-          <div class="sheet-subtitle">顯示方式、淡江登入與資料</div>
-        </div>
-        <button class="close-btn" data-close type="button">×</button>
-      </header>
-
+      <header class="sheet-header"><div><div class="sheet-title">設定</div><div class="sheet-subtitle">顯示方式、淡江登入與資料</div></div><button class="close-btn" data-close type="button">×</button></header>
       <div class="sheet-body">
+        <section><h3>顯示星期</h3><div id="dayChecks" class="toggle-grid"></div></section>
+        <section><h3>顯示節次</h3><div id="periodChecks" class="toggle-grid"></div></section>
+        <section><h3>課程卡片</h3><label class="switch-row"><span>顯示座號</span><input id="showSeat" type="checkbox"></label></section>
+
         <section>
-          <h3>顯示星期</h3>
-          <div id="dayChecks" class="toggle-grid"></div>
+          <h3>TKU SSO → API 授權</h3>
+          <div class="account-box"><div><span>姓名</span><strong id="settingStudentName">尚未取得</strong></div><div><span>學號</span><strong id="settingStudentId">尚未取得</strong></div><div><span>授權狀態</span><strong id="tokenStatus">尚未取得</strong></div></div>
+          <button id="tkuLoginButton" class="full-btn primary" type="button">🔐 開啟淡江 SSO 登入</button>
+          <label class="field"><span>SSO／API 回傳網址或授權字串</span><textarea id="tkuAuthInput" rows="4" placeholder="登入完成後複製瀏覽器網址，或貼上官方 API URL；也可直接貼授權字串"></textarea></label>
+          <button id="pasteAuthButton" class="full-btn" type="button">💾 儲存授權參數</button>
+          <button id="workerProbeButton" class="full-btn" type="button">🧪 測試 Worker → TKU</button>
+          <button id="workerSyncButton" class="full-btn primary" type="button">📥 抓取真正課表</button>
+          <button id="clearAuthButton" class="full-btn danger-soft" type="button">清除本分頁 TKU 授權</button>
+          <p class="hint">這個版本不把 TKU 帳號密碼送到你的 Worker。你自己在 TKU 官方頁面登入，再把登入完成後的回傳網址／授權參數交給本頁；Worker 只固定呼叫 TKU 的課表 API。</p>
         </section>
 
         <section>
-          <h3>顯示節次</h3>
-          <div id="periodChecks" class="toggle-grid"></div>
+          <h3>TKU API 手動驗證</h3>
+          <button id="openIlifeApiButton" class="full-btn" type="button">開啟 TKU 課表 API</button>
+          <button id="copyApiTemplateButton" class="full-btn" type="button">複製 API URL 範例</button>
+          <p class="hint">此功能只拿來確認官方 API 回應。真正同步請使用上面的 Worker 流程。</p>
         </section>
 
-        <section>
-          <h3>課程卡片</h3>
-          <label class="switch-row">
-            <span>顯示座號</span>
-            <input id="showSeat" type="checkbox">
-          </label>
-        </section>
+        <section><h3>iLife 課表 JSON</h3><p class="hint">如果你已經取得 iLife 課表 JSON，可以直接貼上匯入。</p><textarea id="ilifeJsonInput" rows="7" placeholder='例如：[ {"weekno":"1","sessno":"01","seatno":"033","ch_cos_name":"高等微積分","teach_name":"余成義","room":"S 420"} ]'></textarea><button id="importILifeJsonButton" class="full-btn" type="button">匯入 iLife JSON</button></section>
 
-        <section>
-          <h3>淡江 SSO／iLife</h3>
-          <div class="account-box">
-            <div><span>姓名</span><strong id="settingStudentName">尚未取得</strong></div>
-            <div><span>學號</span><strong id="settingStudentId">尚未取得</strong></div>
-            <div><span>Token 狀態</span><strong id="tokenStatus">未取得</strong></div>
-          </div>
-          <button id="tkuLoginButton" class="full-btn primary" type="button">🔐 前往淡江登入</button>
-          <button id="syncApiButton" class="full-btn" type="button">📥 開啟 TKU API 抓課表</button>
-          <button id="testSessionButton" class="full-btn" type="button">🧪 測試目前淡江登入 Session</button>
-          <button id="openIlifeApiButton" class="full-btn primary" type="button">📥 開啟 TKU 課表 API</button>
-          <button id="clearTokenButton" class="full-btn danger-soft" type="button">清除本機登入 Token</button>
-          <p class="hint">
-            新增「真實 API 抓取測試」：先開啟 TKU 課表 API；完成淡江登入後，當畫面顯示 JSON，使用一次「TKU 抓課表」書籤，就會把 API 回應傳回本頁並自動整理成課表。這個方法不會把你的帳號密碼交給本網站。
-          </p>
-          <section class="capture-box">
-            <h4>第一次使用：建立「TKU 抓課表」書籤</h4>
-            <p class="hint">先按「複製書籤程式」，再用 Ctrl+D 新增書籤，名稱填 <strong>TKU 抓課表</strong>，網址貼上剛剛複製的內容。</p>
-            <button id="copyCaptureBookmarkletButton" class="full-btn" type="button">📋 複製「TKU 抓課表」書籤程式</button>
-            <textarea id="captureBookmarkletInput" rows="4" readonly spellcheck="false"></textarea>
-          </section>
-        </section>
+        <section><h3>本機資料</h3><button id="loadDemo" class="full-btn" type="button">載入範例課表</button><button id="clearCoursesButton" class="full-btn" type="button">🗑 清除課表</button><button id="exportData" class="full-btn" type="button">匯出 JSON</button><label class="full-btn file-btn">匯入 JSON<input id="importData" type="file" accept=".json,application/json"></label><button id="logoutAppButton" class="full-btn danger" type="button">清除本機全部資料</button></section>
 
-        <section>
-          <h3>iLife 課表 JSON</h3>
-          <p class="hint">如果你已取得 iLife 課表 JSON，可以直接貼上匯入。程式會依「課名＋座號」合併同一門課的多個時段。</p>
-          <textarea id="ilifeJsonInput" rows="7" placeholder='例如：[ {"weekno":"1","sessno":"01","seatno":"033","ch_cos_name":"高等微積分","teach_name":"余成義","room":"S 420"} ]'></textarea>
-          <button id="importILifeJsonButton" class="full-btn" type="button">匯入 iLife JSON</button>
-        </section>
-
-        <section>
-          <h3>本機資料</h3>
-          <button id="loadDemo" class="full-btn" type="button">載入範例課表</button>
-          <button id="clearCoursesButton" class="full-btn" type="button">🗑 清除課表</button>
-          <button id="exportData" class="full-btn" type="button">匯出 JSON</button>
-          <label class="full-btn file-btn">
-            匯入 JSON
-            <input id="importData" type="file" accept=".json,application/json">
-          </label>
-          <button id="logoutAppButton" class="full-btn danger" type="button">清除本機全部資料</button>
-        </section>
-
-        <section>
-          <h3>API 設定</h3>
-          <label class="field">
-            <span>iLife API 基底網址</span>
-            <input id="apiBaseInput" type="url">
-          </label>
-          <button id="saveApiBaseButton" class="full-btn" type="button">儲存 API 設定</button>
-          <p class="hint">預設值來自你提供的 iCampusPass APK 字串。若淡江之後更改 API，才能在這裡調整。</p>
-        </section>
+        <section><h3>雲端後端</h3><label class="field"><span>Cloudflare Worker 網址</span><input id="workerBaseInput" type="url" placeholder="https://tku-timetable-api.xxxxx.workers.dev"></label><button id="saveWorkerBaseButton" class="full-btn" type="button">儲存雲端後端網址</button><p class="hint">請填你自己部署的 Worker，例如 https://tku-timetable-api.ccg38093.workers.dev</p></section>
       </div>
     </section>
   </div>
-
   <script src="./app.js"></script>
 </body>
 </html>

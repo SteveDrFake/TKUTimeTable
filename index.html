@@ -142,7 +142,9 @@
           </div>
           <button id="tkuLoginButton" class="full-btn primary" type="button">🔐 前往淡江登入</button>
           <button id="syncApiButton" class="full-btn" type="button">↻ 用目前登入狀態同步</button>
+          <button id="inspectSSOButton" class="full-btn" type="button">🧪 檢查 SSO 回跳</button>
           <button id="clearTokenButton" class="full-btn danger-soft" type="button">清除本機登入 Token</button>
+          <div id="ssoDiagnostic" class="hint">尚未檢查登入回跳。</div>
           <p class="hint">
             本版本按照你提供的 iCampusPass APK 所呈現的登入入口與 iLife 課表 API 架構製作。
             APK 沒有公開給網頁版使用的 callback 規格，因此程式只會在 SSO 將 token／q 參數導回本頁時自動接手，不會自行猜測登入結果。

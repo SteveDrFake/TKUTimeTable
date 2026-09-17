@@ -17,3 +17,7 @@
 5. Worker 以 `?q=token` 呼叫 TKU iLife API。
 
 注意：Worker 不會取得你的瀏覽器 Cookie；它依賴登入流程回傳給網頁的 q/token。如果 TKU API 還要求其他授權，Worker 會回傳實際錯誤，不會偽造成功。
+
+
+## v20 SSO callback diagnostics
+This version keeps the v8 UI and adds only SSO callback diagnostics. It records only callback parameter names in the UI and never displays token values. If the TKU SSO flow redirects back to this site, the app will detect the callback and try the existing Worker sync path when a token-like parameter is present.

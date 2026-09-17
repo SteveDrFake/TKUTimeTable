@@ -347,6 +347,68 @@ async function importJSON(file){
 let ssoWindow = null;
 let ssoTimer = null;
 
+function callbackParamNames(href){
+  try{
+    const u = new URL(href);
+    const names = new Set();
+    for(const [k] of u.searchParams.entries()) names.add(k.toLowerCase());
+    if(u.hash.includes("=")){
+      const h = new URLSearchParams(u.hash.replace(/^#/,""));
+      for(const [k] of h.entries()) names.add(k.toLowerCase());
+    }
+    return {origin:u.origin, path:u.pathname, params:[...names]};
+  }catch{
+    return {origin:"",path:"",params:[]};
+  }
+}
+
+function setSSODiagnostic(text){
+  const el=document.getElementById("ssoDiagnostic");
+  if(el) el.textContent=text;
+}
+
+async function acceptSSOCallbackUrl(href){
+  if(!href) return false;
+  const u = new URL(href, location.href);
+  if(u.origin !== location.origin) return false;
+
+  const p = {};
+  for(const [k,v] of u.searchParams.entries()) p[k.toLowerCase()] = v;
+  if(u.hash.includes("=")){
+    const h = new URLSearchParams(u.hash.replace(/^#/,""));
+    for(const [k,v] of h.entries()) p[k.toLowerCase()] = v;
+  }
+
+  const token = p.token || p.access_token || p.ssotoken || p.sso_token || p.q || p.login_token || p.id_token;
+  const studentId = p.studentid || p.student_id || p.tia_student_id_no || p.idno;
+  const name = p.name || p.studentname;
+  const diag = callbackParamNames(u.href);
+  const safeParams = diag.params.filter(x => !["token","access_token","ssotoken","sso_token","q","login_token","id_token"].includes(x));
+  setSSODiagnostic(`已回到本網站：${diag.path}；收到參數名稱：${diag.params.length ? diag.params.join(", ") : "無"}`);
+
+  if(token) setToken(token);
+  if(studentId) state.student.studentId = studentId;
+  if(name) state.student.name = decodeURIComponentSafe(name);
+  if(token || studentId || name){
+    saveState();
+    const clean = new URL(location.href);
+    ["token","access_token","ssotoken","sso_token","q","login_token","id_token","studentid","student_id","tia_student_id_no","idno","name","studentname"].forEach(k=>clean.searchParams.delete(k));
+    clean.hash = "";
+    history.replaceState({},document.title,clean.pathname+clean.search);
+    if(token){
+      await syncFromILife(token);
+    }else{
+      renderAll();
+      showMessage("SSO 已回到本頁，但只有身分資訊，尚未取得 API 授權參數。");
+    }
+    return true;
+  }
+  if(safeParams.length || diag.params.length===0){
+    showMessage("已偵測到 SSO 回到本頁，但沒有找到可用的 token／q 參數。");
+  }
+  return false;
+}
+
 function openTKUSSO(){
   ssoWindow = window.open(
     SSO_URL,
@@ -359,7 +421,8 @@ function openTKUSSO(){
     return;
   }
 
-  showMessage("請在淡江登入視窗完成登入。看到「登入成功」後，關閉登入視窗，再回本頁按「測試目前淡江登入 Session」。");
+  setSSODiagnostic("已開啟 TKU SSO。登入後若 TKU 將瀏覽器導回本網站，這裡會自動顯示回傳參數名稱。");
+  showMessage("請在淡江登入視窗完成登入。不要把帳號、密碼、Cookie 或 Token 傳給任何人；登入完成後看這裡是否出現 SSO 回跳資訊。");
 
   clearInterval(ssoTimer);
   ssoTimer = setInterval(()=>{
@@ -370,6 +433,13 @@ function openTKUSSO(){
     }
   }, 700);
 }
+
+window.addEventListener("message", async (event)=>{
+  if(event.origin !== location.origin) return;
+  if(event.data?.type !== "TKU_SSO_CALLBACK") return;
+  if(typeof event.data.href !== "string") return;
+  await acceptSSOCallbackUrl(event.data.href);
+});
 
 function readCallbackValues(){
   const out = {};
@@ -383,31 +453,7 @@ function readCallbackValues(){
 }
 
 async function handleSSOCallback(){
-  const p = readCallbackValues();
-  const token = p.token || p.access_token || p.ssotoken || p.sso_token || p.q || p.login_token;
-  const studentId = p.studentid || p.student_id || p.tia_student_id_no || p.idno;
-  const name = p.name || p.studentname;
-
-  if(!token && !studentId && !name) return false;
-
-  if(token) setToken(token);
-  if(studentId) state.student.studentId = studentId;
-  if(name) state.student.name = decodeURIComponentSafe(name);
-  saveState();
-
-  const clean = new URL(location.href);
-  ["token","access_token","ssotoken","sso_token","q","login_token","studentid","student_id","tia_student_id_no","idno","name","studentname"].forEach(k=>{
-    clean.searchParams.delete(k);
-  });
-  clean.hash = "";
-  history.replaceState({},document.title,clean.pathname+clean.search);
-
-  if(token){
-    await syncFromILife(token);
-  }else{
-    renderAll();
-  }
-  return true;
+  return acceptSSOCallbackUrl(location.href);
 }
 
 function decodeURIComponentSafe(v){
@@ -709,7 +755,8 @@ async function syncFromButton(){
   const token = getToken();
   if(!token){
     openSettings();
-    showMessage("尚未取得登入 Token。");
+    setSSODiagnostic("目前沒有保存的 SSO 授權參數；先按「前往淡江登入」，登入後觀察是否回跳到本頁。");
+    showMessage("目前沒有可用的登入授權參數，因此沒有送出課表同步請求。");
     return;
   }
   await syncFromILife(token);
@@ -745,6 +792,11 @@ document.getElementById("showSeat").addEventListener("change",e=>{
   state.display.showSeat = e.target.checked; saveState(); renderSchedule();
 });
 document.getElementById("tkuLoginButton").addEventListener("click",openTKUSSO);
+document.getElementById("inspectSSOButton")?.addEventListener("click",()=>{
+  const info=callbackParamNames(location.href);
+  setSSODiagnostic(`目前頁面：${info.path}；目前參數名稱：${info.params.length ? info.params.join(", ") : "無"}`);
+  showMessage(info.params.length ? "已列出目前頁面的參數名稱，不顯示參數內容。" : "目前網址沒有 callback 參數。");
+});
 document.getElementById("testSessionButton")?.addEventListener("click",testBrowserSession);
 document.getElementById("clearTokenButton").addEventListener("click",()=>{
   setToken("");
@@ -775,6 +827,13 @@ document.getElementById("saveWorkerBaseButton").addEventListener("click",()=>{
 
 window.addEventListener("online",renderAll);
 window.addEventListener("offline",renderAll);
+
+// 若 SSO 導回同源本頁，而且本頁是在登入 popup 中開啟，通知 opener 再嘗試關閉 popup。
+try{
+  if(window.opener && window.opener !== window && location.origin === new URL(document.referrer || location.href).origin){
+    window.opener.postMessage({type:"TKU_SSO_CALLBACK", href:location.href}, location.origin);
+  }
+}catch{}
 
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(console.error));

@@ -2,535 +2,188 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1f2937">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="淡江課表">
+  <title>淡江課表</title>
   <link rel="manifest" href="./manifest.json">
-  <style id="tku-inline-style">
-:root{
-  --bg:#f3f4f6;
-  --panel:#ffffff;
-  --border:#d9dee5;
-  --text:#1f2937;
-  --muted:#6b7280;
-  --primary:#1f2937;
-  --primary-2:#374151;
-  --danger:#b91c1c;
-  --cell-w:150px;
-  --time-w:82px;
-  --row-h:98px;
-}
-*{box-sizing:border-box}
-html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",Arial,sans-serif}
-body{min-height:100vh}
-button,input,textarea{font:inherit}
-button{cursor:pointer}
-.app-shell{min-height:100vh}
-.topbar{
-  position:sticky;top:0;z-index:20;
-  min-height:64px;padding:10px 14px;
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  background:rgba(255,255,255,.96);backdrop-filter:blur(10px);
-  border-bottom:1px solid var(--border);
-}
-.brand-title{font-size:20px;font-weight:800;letter-spacing:.02em}
-.brand-subtitle{font-size:12px;color:var(--muted);margin-top:2px}
-.top-actions{display:flex;gap:8px}
-.top-btn,.circle-btn,.week-title-btn,.btn,.full-btn,.small-btn,.close-btn{
-  border:1px solid var(--border);background:#fff;color:var(--text);
-}
-.top-btn{height:38px;padding:0 13px;border-radius:10px;font-weight:700}
-.top-btn.primary,.primary{background:var(--primary);color:#fff;border-color:var(--primary)}
-.page{width:min(1500px,100%);margin:0 auto;padding:12px}
-.account-bar{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:12px 14px;
-  margin-bottom:10px;
-}
-.student-name{font-weight:800}
-.student-info{font-size:13px;color:var(--muted);margin-top:2px}
-.status-pill{font-size:12px;padding:7px 9px;border-radius:999px;background:#eef2f7;white-space:nowrap}
-.week-toolbar{display:flex;align-items:center;justify-content:center;gap:8px;margin:10px 0}
-.circle-btn{width:42px;height:42px;border-radius:50%;font-size:24px;line-height:1}
-.week-title-btn{
-  min-width:180px;min-height:42px;border-radius:12px;padding:6px 14px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-}
-.week-title-btn span{font-size:12px;color:var(--muted);margin-top:1px}
-.schedule-wrap{
-  width:100%;overflow-x:auto;overflow-y:hidden;
-  border:1px solid var(--border);border-radius:14px;background:#fff;
-  -webkit-overflow-scrolling:touch;
-}
-.schedule-grid{
-  display:grid;
-  grid-template-columns:var(--time-w) repeat(var(--day-count),var(--cell-w));
-  width:max-content;min-width:100%;
-}
-.corner-cell,.day-head,.period-label,.course-cell{
-  border-right:1px solid var(--border);
-  border-bottom:1px solid var(--border);
-}
-.corner-cell{
-  position:sticky;left:0;z-index:6;background:#f8fafc;
-  min-height:52px;
-}
-.day-head{
-  position:sticky;top:0;z-index:5;
-  min-height:52px;padding:8px 6px;background:#f8fafc;text-align:center;
-}
-.day-head strong{display:block}
-.day-head small{display:block;color:var(--muted);margin-top:2px;font-size:11px}
-.period-label{
-  position:sticky;left:0;z-index:4;
-  height:var(--row-h);background:#fafbfc;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
-}
-.period-label strong{font-size:13px}
-.period-label span{font-size:10px;color:var(--muted);margin-top:4px}
-.course-cell{
-  position:relative;min-height:var(--row-h);height:var(--row-h);
-  padding:6px;background:#fff;
-}
-.course-card{
-  width:100%;height:100%;padding:8px;text-align:left;
-  border:1px solid #cfd5dc;border-radius:10px;background:#f8fafc;
-  overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start;
-}
-.course-card:hover{background:#f2f4f7}
-.course-name{font-size:13px;font-weight:800;line-height:1.25;overflow:hidden}
-.course-meta{font-size:11px;color:#4b5563;line-height:1.35;margin-top:5px;overflow:hidden}
-.course-seat{font-size:11px;font-weight:700;margin-top:auto;color:#111827}
-.empty-cell{display:flex;align-items:center;justify-content:center;height:100%;color:#c3c8cf;font-size:12px}
-.message-panel{margin-top:10px;padding:12px;border-radius:12px;background:#fff;border:1px solid var(--border);font-size:13px}
-.hidden{display:none!important}
-.overlay{
-  position:fixed;inset:0;z-index:100;background:rgba(15,23,42,.42);
-  display:flex;align-items:flex-end;justify-content:center;
-}
-.sheet{
-  position:relative;
-  z-index:101;
-  width:min(760px,100%);max-height:92vh;background:#fff;border-radius:18px 18px 0 0;
-  display:flex;flex-direction:column;box-shadow:0 -10px 40px rgba(0,0,0,.2)
-}
-.settings-sheet{width:min(620px,100%)}
-.sheet-header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:16px;border-bottom:1px solid var(--border)}
-.sheet-title{font-size:20px;font-weight:800}
-.sheet-subtitle{font-size:12px;color:var(--muted);margin-top:3px}
-.close-btn{width:38px;height:38px;border-radius:50%;font-size:25px;line-height:1}
-.sheet-body{overflow:auto;padding:16px;display:flex;flex-direction:column;gap:18px}
-.sheet-footer{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--border)}
-.field{display:flex;flex-direction:column;gap:7px}
-.field>span{font-size:13px;font-weight:700}
-input,textarea{width:100%;border:1px solid #cfd5dc;border-radius:10px;padding:10px;background:#fff;color:var(--text)}
-textarea{resize:vertical}
-.detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.detail-grid>div,.account-box>div{
-  padding:10px;border:1px solid var(--border);border-radius:10px;background:#fafbfc
-}
-.detail-grid span,.account-box span{display:block;font-size:11px;color:var(--muted)}
-.detail-grid strong,.account-box strong{display:block;font-size:13px;margin-top:4px;word-break:break-word}
-.sheet-body h3{margin:0 0 8px;font-size:15px}
-.stack{display:flex;flex-direction:column;gap:8px}
-.time-item,.journal-item{border:1px solid var(--border);border-radius:10px;padding:10px;background:#fafbfc}
-.time-title{font-weight:800;font-size:13px}.time-sub,.time-teacher{font-size:12px;color:#4b5563;margin-top:3px}
-.journal-item{font-size:12px}
-.section-head{display:flex;align-items:center;justify-content:space-between}
-.small-btn{padding:7px 10px;border-radius:9px}
-.btn{min-width:90px;padding:10px 14px;border-radius:10px;font-weight:700}
-.course-links a{display:inline-block;margin-right:10px;font-size:13px}
-.toggle-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.toggle-item{
-  min-height:46px;border:1px solid var(--border);border-radius:10px;padding:8px 10px;
-  display:flex;justify-content:space-between;align-items:center;gap:8px;background:#fafbfc
-}
-.toggle-item small{display:block;color:var(--muted);font-size:10px;margin-top:2px}
-.switch-row{display:flex;align-items:center;justify-content:space-between;padding:11px;border:1px solid var(--border);border-radius:10px;background:#fafbfc}
-.account-box{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:8px}
-.full-btn{width:100%;min-height:44px;border-radius:10px;padding:10px 12px;margin-top:8px;font-weight:700;text-align:center}
-.danger{border-color:#ef4444;color:#991b1b;background:#fff}
-.danger-soft{background:#fff7f7;color:#991b1b;border-color:#fecaca}
-.file-btn{display:block;cursor:pointer}
-.file-btn input{display:none}
-.hint{font-size:11px;line-height:1.55;color:var(--muted);margin:8px 0 0}
-@media (min-width:800px){
-  .overlay{align-items:center;padding:20px}
-  .sheet{border-radius:18px}
-  .settings-sheet{max-height:88vh}
-}
-@media (max-width:600px){
-  :root{--cell-w:136px;--row-h:94px}
-  .page{padding:8px}
-  .account-bar{padding:10px}
-  .topbar{padding:8px 10px}
-  .brand-title{font-size:18px}
-  .top-btn{padding:0 10px}
-  .detail-grid,.toggle-grid{grid-template-columns:1fr}
-}
-
-.capture-box{padding:12px;border:1px dashed #b8c0ca;border-radius:12px;background:#fbfcfd}
-.capture-box h4{margin:0 0 6px;font-size:13px}
-.capture-box textarea{font-size:10px;line-height:1.3;min-height:82px;word-break:break-all}
-
-</style>
-  <title>TKU 課表 v18</title>
+  <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-  <div id="app">
+  <div class="app-shell">
     <header class="topbar">
-      <div class="brand"><strong>TKU 課表</strong><span id="semesterText">本機課表</span></div>
-      <button id="settingsButton" class="top-btn" type="button" onclick="window.__openSettingsFallback ? window.__openSettingsFallback() : (document.getElementById('overlay').classList.remove('hidden'),document.getElementById('settingsPanel').classList.remove('hidden'),document.body.style.overflow='hidden')">設定</button>
+      <div class="brand">
+        <div class="brand-title">淡江課表</div>
+        <div id="semesterText" class="brand-subtitle">本機課表</div>
+      </div>
+      <div class="top-actions">
+        <button id="syncButton" class="top-btn primary" type="button">同步</button>
+        <button id="settingsButton" class="top-btn" type="button">設定</button>
+      </div>
     </header>
 
-    <main>
-      <section class="student-bar">
-        <div><strong id="studentName">尚未登入</strong><div id="studentInfo">可先使用範例資料測試課表</div></div>
-        <div id="networkStatus" class="status-pill">目前有網路</div>
-      </section>
-      <section class="week-nav">
-        <button id="prevWeek" class="btn" type="button">←</button>
-        <button id="todayButton" class="btn" type="button">本週</button>
-        <strong id="weekText"></strong>
-        <button id="nextWeek" class="btn" type="button">→</button>
-      </section>
-      <div id="schedule" class="schedule"></div>
-    </main>
-
-    <button id="syncButton" class="floating-sync" type="button">同步課表</button>
-    <div id="messagePanel" class="message hidden"></div>
-    <div id="overlay" class="overlay hidden"></div>
-
-    <section id="coursePanel" class="sheet hidden course-sheet" role="dialog" aria-modal="true">
-      <header class="sheet-header"><div><div id="courseTitle" class="sheet-title">課程</div><div id="courseSubtitle" class="sheet-subtitle"></div></div><button class="close-btn" data-close type="button">×</button></header>
-      <div class="sheet-body">
-        <label class="field"><span>自訂名稱</span><input id="customName" type="text"></label>
-        <div class="info-grid">
-          <div><span>原課名</span><strong id="schoolName">—</strong></div><div><span>開課序號</span><strong id="courseIdText">—</strong></div>
-          <div><span>座號</span><strong id="seatNumber">—</strong></div><div><span>學分</span><strong id="credits">—</strong></div>
-          <div><span>系所</span><strong id="department">—</strong></div><div><span>年級／班別</span><strong id="gradeClass">—</strong></div>
+    <main class="page">
+      <section class="account-bar">
+        <div class="account-main">
+          <div id="studentName" class="student-name">尚未登入</div>
+          <div id="studentInfo" class="student-info">可先使用範例資料測試課表</div>
         </div>
-        <h3>上課時間</h3><div id="timesList"></div>
-        <div id="courseLinks"></div>
-        <label class="field"><span>課程描述</span><textarea id="description" rows="4"></textarea></label>
-        <label class="field"><span>備註</span><textarea id="note" rows="3"></textarea></label>
-        <h3>記事</h3><div id="journalList"></div><button id="addJournal" class="full-btn" type="button">新增記事</button>
+        <div id="networkStatus" class="status-pill">離線可用</div>
+      </section>
+
+      <section class="week-toolbar">
+        <button id="prevWeek" class="circle-btn" type="button" aria-label="上一週">‹</button>
+        <button id="todayButton" class="week-title-btn" type="button">
+          <strong>本週</strong>
+          <span id="weekText">—</span>
+        </button>
+        <button id="nextWeek" class="circle-btn" type="button" aria-label="下一週">›</button>
+      </section>
+
+      <section class="schedule-wrap">
+        <div id="schedule" class="schedule-grid" aria-label="課表"></div>
+      </section>
+
+      <section id="messagePanel" class="message-panel hidden"></section>
+    </main>
+  </div>
+
+  <div id="overlay" class="overlay hidden">
+    <section id="coursePanel" class="sheet hidden" role="dialog" aria-modal="true">
+      <header class="sheet-header">
+        <div>
+          <div id="courseTitle" class="sheet-title">課程</div>
+          <div id="courseSubtitle" class="sheet-subtitle"></div>
+        </div>
+        <button class="close-btn" data-close type="button">×</button>
+      </header>
+      <div class="sheet-body">
+        <label class="field">
+          <span>顯示課程名稱</span>
+          <input id="customName" type="text" placeholder="留空＝使用學校原名稱">
+        </label>
+
+        <div class="detail-grid">
+          <div><span>原課名</span><strong id="schoolName">—</strong></div>
+          <div><span>開課序號</span><strong id="courseIdText">—</strong></div>
+          <div><span>座號</span><strong id="seatNumber">—</strong></div>
+          <div><span>學分</span><strong id="credits">—</strong></div>
+          <div><span>系所</span><strong id="department">—</strong></div>
+          <div><span>年級／班別</span><strong id="gradeClass">—</strong></div>
+        </div>
+
+        <section>
+          <h3>上課時段</h3>
+          <div id="timesList" class="stack"></div>
+        </section>
+
+        <div id="courseLinks" class="course-links"></div>
+
+        <label class="field">
+          <span>課程說明</span>
+          <textarea id="description" rows="4" readonly></textarea>
+        </label>
+
+        <label class="field">
+          <span>我的備註</span>
+          <textarea id="note" rows="4" placeholder="自己的備註"></textarea>
+        </label>
+
+        <section>
+          <div class="section-head">
+            <h3>我的記事</h3>
+            <button id="addJournal" class="small-btn" type="button">＋新增</button>
+          </div>
+          <div id="journalList" class="stack"></div>
+        </section>
       </div>
-      <footer class="sheet-footer"><button id="cancelCourse" class="btn" type="button">取消</button><button id="saveCourseButton" class="btn primary" type="button">儲存</button></footer>
+      <footer class="sheet-footer">
+        <button id="cancelCourse" class="btn" type="button">取消</button>
+        <button id="saveCourseButton" class="btn primary" type="button">儲存</button>
+      </footer>
     </section>
 
     <section id="settingsPanel" class="sheet hidden settings-sheet" role="dialog" aria-modal="true">
-      <header class="sheet-header"><div><div class="sheet-title">設定</div><div class="sheet-subtitle">顯示方式、淡江登入與資料</div></div><button class="close-btn" data-close type="button">×</button></header>
+      <header class="sheet-header">
+        <div>
+          <div class="sheet-title">設定</div>
+          <div class="sheet-subtitle">顯示方式、淡江登入與資料</div>
+        </div>
+        <button class="close-btn" data-close type="button">×</button>
+      </header>
+
       <div class="sheet-body">
-        <section><h3>顯示星期</h3><div id="dayChecks" class="toggle-grid"></div></section>
-        <section><h3>顯示節次</h3><div id="periodChecks" class="toggle-grid"></div></section>
-        <section><h3>課程卡片</h3><label class="switch-row"><span>顯示座號</span><input id="showSeat" type="checkbox"></label></section>
-
         <section>
-          <h3>TKU SSO → API 授權</h3>
-          <div class="account-box"><div><span>姓名</span><strong id="settingStudentName">尚未取得</strong></div><div><span>學號</span><strong id="settingStudentId">尚未取得</strong></div><div><span>授權狀態</span><strong id="tokenStatus">尚未取得</strong></div></div>
-          <button id="tkuLoginButton" class="full-btn primary" type="button">🔐 開啟淡江 SSO 登入</button>
-          <label class="field"><span>SSO／API 回傳網址或授權字串</span><textarea id="tkuAuthInput" rows="4" placeholder="登入完成後複製瀏覽器網址，或貼上官方 API URL；也可直接貼授權字串"></textarea></label>
-          <button id="pasteAuthButton" class="full-btn" type="button">💾 儲存授權參數</button>
-          <button id="workerProbeButton" class="full-btn" type="button">🧪 測試 Worker → TKU</button>
-          <button id="workerSyncButton" class="full-btn primary" type="button">📥 抓取真正課表</button>
-          <button id="clearAuthButton" class="full-btn danger-soft" type="button">清除本分頁 TKU 授權</button>
-          <p class="hint">這個版本不把 TKU 帳號密碼送到你的 Worker。你自己在 TKU 官方頁面登入，再把登入完成後的回傳網址／授權參數交給本頁；Worker 只固定呼叫 TKU 的課表 API。</p>
+          <h3>顯示星期</h3>
+          <div id="dayChecks" class="toggle-grid"></div>
         </section>
 
         <section>
-          <h3>TKU API 手動驗證</h3>
-          <button id="openIlifeApiButton" class="full-btn" type="button">開啟 TKU 課表 API</button>
-          <button id="copyApiTemplateButton" class="full-btn" type="button">複製 API URL 範例</button>
-          <p class="hint">此功能只拿來確認官方 API 回應。真正同步請使用上面的 Worker 流程。</p>
+          <h3>顯示節次</h3>
+          <div id="periodChecks" class="toggle-grid"></div>
         </section>
 
-        <section><h3>iLife 課表 JSON</h3><p class="hint">如果你已經取得 iLife 課表 JSON，可以直接貼上匯入。</p><textarea id="ilifeJsonInput" rows="7" placeholder='例如：[ {"weekno":"1","sessno":"01","seatno":"033","ch_cos_name":"高等微積分","teach_name":"余成義","room":"S 420"} ]'></textarea><button id="importILifeJsonButton" class="full-btn" type="button">匯入 iLife JSON</button></section>
+        <section>
+          <h3>課程卡片</h3>
+          <label class="switch-row">
+            <span>顯示座號</span>
+            <input id="showSeat" type="checkbox">
+          </label>
+        </section>
 
-        <section><h3>本機資料</h3><button id="loadDemo" class="full-btn" type="button">載入範例課表</button><button id="clearCoursesButton" class="full-btn" type="button">🗑 清除課表</button><button id="exportData" class="full-btn" type="button">匯出 JSON</button><label class="full-btn file-btn">匯入 JSON<input id="importData" type="file" accept=".json,application/json"></label><button id="logoutAppButton" class="full-btn danger" type="button">清除本機全部資料</button></section>
+        <section>
+          <h3>淡江 SSO／iLife</h3>
+          <div class="account-box">
+            <div><span>姓名</span><strong id="settingStudentName">尚未取得</strong></div>
+            <div><span>學號</span><strong id="settingStudentId">尚未取得</strong></div>
+            <div><span>Token 狀態</span><strong id="tokenStatus">未取得</strong></div>
+          </div>
+          <button id="tkuLoginButton" class="full-btn primary" type="button">🔐 前往淡江登入</button>
+          <button id="syncApiButton" class="full-btn" type="button">↻ 用目前登入狀態同步</button>
+          <button id="clearTokenButton" class="full-btn danger-soft" type="button">清除本機登入 Token</button>
+          <p class="hint">
+            本版本按照你提供的 iCampusPass APK 所呈現的登入入口與 iLife 課表 API 架構製作。
+            APK 沒有公開給網頁版使用的 callback 規格，因此程式只會在 SSO 將 token／q 參數導回本頁時自動接手，不會自行猜測登入結果。
+          </p>
+        </section>
 
-        <section><h3>雲端後端</h3><label class="field"><span>Cloudflare Worker 網址</span><input id="workerBaseInput" type="url" placeholder="https://tku-timetable-api.xxxxx.workers.dev"></label><button id="saveWorkerBaseButton" class="full-btn" type="button">儲存雲端後端網址</button><p class="hint">請填你自己部署的 Worker，例如 https://tku-timetable-api.ccg38093.workers.dev</p></section>
+        <section>
+          <h3>本機資料</h3>
+          <button id="loadDemo" class="full-btn" type="button">載入範例課表</button>
+          <button id="clearCoursesButton" class="full-btn" type="button">🗑 清除課表</button>
+          <button id="exportData" class="full-btn" type="button">匯出 JSON</button>
+          <label class="full-btn file-btn">
+            匯入 JSON
+            <input id="importData" type="file" accept=".json,application/json">
+          </label>
+          <button id="logoutAppButton" class="full-btn danger" type="button">清除本機全部資料</button>
+        </section>
+
+        <section>
+          <h3>API 設定</h3>
+          <label class="field">
+            <span>iLife API 基底網址</span>
+            <input id="apiBaseInput" type="url">
+          </label>
+          <button id="saveApiBaseButton" class="full-btn" type="button">儲存 API 設定</button>
+          <p class="hint">預設值來自你提供的 iCampusPass APK 字串。若淡江之後更改 API，才能在這裡調整。</p>
+        </section>
+
+        <section>
+          <h3>雲端後端</h3>
+          <label class="field">
+            <span>Cloudflare Worker 網址</span>
+            <input id="workerBaseInput" type="url" value="https://tku-timetable-api.ccg38093.workers.dev">
+          </label>
+          <button id="saveWorkerBaseButton" class="full-btn" type="button">儲存後端網址</button>
+          <p class="hint">同步按鈕會把目前登入後取得的授權參數交給後端，再由後端向 TKU iLife API 取得課表。</p>
+        </section>
       </div>
     </section>
   </div>
-  <script>
-// Guaranteed settings opener: independent of the main app boot sequence.
-(function(){
-  function openSettingsNow(){
-    var overlay=document.getElementById('overlay');
-    var panel=document.getElementById('settingsPanel');
-    if(overlay) overlay.classList.remove('hidden');
-    if(panel) panel.classList.remove('hidden');
-    document.body.style.overflow='hidden';
-  }
-  window.openSettingsPanel = openSettingsNow;
-  window.__openSettingsFallback = openSettingsNow;
-  document.addEventListener('DOMContentLoaded', function(){
-    var b=document.getElementById('settingsButton');
-    if(b) b.addEventListener('click', openSettingsNow);
-    // Unregister old service workers and clear their old caches once, so stale UI cannot survive.
-    if(navigator.serviceWorker && navigator.serviceWorker.getRegistrations){
-      navigator.serviceWorker.getRegistrations().then(function(rs){ rs.forEach(function(r){ r.unregister(); }); }).catch(function(){});
-    }
-    if(window.caches && caches.keys){
-      caches.keys().then(function(keys){
-        return Promise.all(keys.filter(function(k){return /^tku-timetable-/.test(k);}).map(function(k){return caches.delete(k);}));
-      }).catch(function(){});
-    }
-  });
-})();
-</script>
-<script>
-const STORAGE_KEY = "tku_timetable_v17";
-const WORKER_KEY = "tku_cloudflare_worker_v17";
-const SESSION_Q_KEY = "tku_api_q_v17";
-const DIRECT_BROWSER_API = "https://ilifeapp.az.tku.edu.tw/api/stu/course";
-const TKU_API_BASE = "https://ilifeapi.az.tku.edu.tw/api/ilifeStuClassApi";
-const SSO_URL = "https://sso.tku.edu.tw/ilife/CoWork/AndroidSsoLogin.cshtml";
 
-const DAYS = [
-  {key:1,name:"一"},{key:2,name:"二"},{key:3,name:"三"},
-  {key:4,name:"四"},{key:5,name:"五"},{key:6,name:"六"},{key:7,name:"日"}
-];
-const PERIODS = [
-  [1,"08:10–09:00"],[2,"09:10–10:00"],[3,"10:10–11:00"],[4,"11:10–12:00"],
-  [5,"12:10–13:00"],[6,"13:10–14:00"],[7,"14:10–15:00"],[8,"15:10–16:00"],
-  [9,"16:10–17:00"],[10,"17:10–18:00"],[11,"18:10–19:00"],[12,"19:10–20:00"],
-  [13,"20:10–21:00"],[14,"21:10–22:00"]
-].map(([number,time])=>({number,time}));
-const DEFAULT_DISPLAY = {
-  days:{1:true,2:true,3:true,4:true,5:true,6:false,7:false},
-  periods:{1:true,2:true,3:true,4:true,5:true,6:true,7:true,8:true,9:true,10:true,11:false,12:false,13:false,14:false},
-  showSeat:true
-};
-const DEMO = {
-  version:17, semester:"115-1 範例", student:{name:"範例學生",studentId:"DEMO0000"},
-  display:JSON.parse(JSON.stringify(DEFAULT_DISPLAY)),
-  courses:[
-    {id:"2952",name:"高等微積分",customName:"",department:"TSNXB",grade:"2",className:"",credits:"3",seatNumber:"033",pdf:"http://ap09.emis.tku.edu.tw/115_1/115_1_2952.PDF",description:"",times:[{day:1,periods:[1,2],room:"S 420",teacher:"余"},{day:3,periods:[1],room:"S 420",teacher:"余"},{day:3,periods:[2],room:"S 420",teacher:"助教"}],note:"",journal:[]},
-    {id:"2951",name:"代數學（一）",customName:"",department:"TSNXB",grade:"2",className:"",credits:"3",seatNumber:"040",pdf:"http://ap09.emis.tku.edu.tw/115_1/115_1_2951.PDF",description:"",times:[{day:2,periods:[8,9],room:"S 420",teacher:"王"},{day:5,periods:[3],room:"S 420",teacher:"王"},{day:5,periods:[7],room:"S 420",teacher:"助教"}],note:"",journal:[]},
-    {id:"2954",name:"機率論",customName:"",department:"TSNXB",grade:"2",className:"",credits:"3",seatNumber:"044",pdf:"http://ap09.emis.tku.edu.tw/115_1/115_1_2954.PDF",description:"",times:[{day:4,periods:[5,6],room:"C 013",teacher:"黃"},{day:5,periods:[4],room:"C 013",teacher:"黃"},{day:5,periods:[6],room:"C 002",teacher:"助教"}],note:"",journal:[]},
-    {id:"1458",name:"哲學專題",customName:"",department:"TGCHB",grade:"0",className:"B",credits:"2",seatNumber:"016",pdf:"",description:"",times:[{day:4,periods:[9,10],room:"E 414",teacher:"林"}],note:"",journal:[]}
-  ]
-};
-
-let state = loadState();
-let currentWeekOffset = 0;
-let currentCourseId = null;
-
-const $ = id => document.getElementById(id);
-const on = (id, event, handler, options) => { const el = $(id); if (el) el.addEventListener(event, handler, options); return el; };
-const setText = (id, value) => { const el = $(id); if (el) el.textContent = value; };
-const setValue = (id, value) => { const el = $(id); if (el) el.value = value; };
-
-
-function normalise(data){
-  const x = data && typeof data === "object" ? data : {};
-  x.version = 15;
-  x.semester = x.semester || "";
-  x.student = x.student || {name:"",studentId:""};
-  x.display = {
-    ...clone(DEFAULT_DISPLAY), ...(x.display||{}),
-    days:{...DEFAULT_DISPLAY.days,...(x.display?.days||{})},
-    periods:{...DEFAULT_DISPLAY.periods,...(x.display?.periods||{})}
-  };
-  x.courses = Array.isArray(x.courses) ? x.courses : [];
-  return x;
-}
-function loadState(){try{const raw=localStorage.getItem(STORAGE_KEY);return raw?normalise(JSON.parse(raw)):normalise({});}catch{return normalise({});}}
-function saveState(){localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
-function clone(v){return JSON.parse(JSON.stringify(v));}
-function uid(){return globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random()}`;}
-function esc(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");}
-function getWorkerBase(){return (localStorage.getItem(WORKER_KEY)||"").replace(/\/+$/g,"");}
-function getSessionQ(){return sessionStorage.getItem(SESSION_Q_KEY)||"";}
-function setSessionQ(v){if(v)sessionStorage.setItem(SESSION_Q_KEY,v);else sessionStorage.removeItem(SESSION_Q_KEY);}
-function displayName(c){return c.customName?.trim()||c.name||"未命名課程";}
-function getCourse(id){return state.courses.find(c=>String(c.id)===String(id));}
-function getMonday(offset=0){const d=new Date();const day=d.getDay();const diff=day===0?-6:1-day;d.setHours(0,0,0,0);d.setDate(d.getDate()+diff+offset*7);return d;}
-function dateText(d){return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")}`;}
-function visibleDays(){return DAYS.filter(d=>state.display.days[d.key]);}
-function visiblePeriods(){return PERIODS.filter(p=>state.display.periods[p.number]);}
-
-function renderHeader(){
-  setText("semesterText", state.semester?`學期：${state.semester}`:"本機課表");
-  setText("studentName", state.student?.name||"尚未登入");
-  setText("studentInfo", state.student?.studentId?`學號：${state.student.studentId}`:"可先使用範例資料測試課表");
-  setText("settingStudentName", state.student?.name||"尚未取得");
-  setText("settingStudentId", state.student?.studentId||"尚未取得");
-  setText("tokenStatus", getSessionQ()?"本分頁已有 TKU 授權參數":"尚未取得");
-  setValue("workerBaseInput", getWorkerBase());
-  setValue("tkuAuthInput", getSessionQ());
-  const mon=getMonday(currentWeekOffset);const sun=new Date(mon);sun.setDate(sun.getDate()+6);
-  setText("weekText", `${dateText(mon)} ～ ${dateText(sun)}`);
-}
-
-function coursesForCell(day,period){const found=[];for(const c of state.courses){for(const t of c.times||[]){if(Number(t.day)!==day)continue;if(!(t.periods||[]).map(Number).includes(period))continue;found.push({course:c,time:t});}}return found;}
-function renderSchedule(){
-  const root=document.getElementById("schedule");root.innerHTML="";const days=visibleDays();const periods=visiblePeriods();root.style.setProperty("--day-count",String(days.length));
-  if(!days.length||!periods.length){root.innerHTML=`<div style="grid-column:1/-1;padding:30px;text-align:center;color:#6b7280">請在設定中至少開啟一個星期與一個節次。</div>`;return;}
-  const monday=getMonday(currentWeekOffset);const corner=document.createElement("div");corner.className="corner-cell";root.appendChild(corner);
-  for(const day of days){const date=new Date(monday);date.setDate(monday.getDate()+day.key-1);const h=document.createElement("div");h.className="day-head";h.innerHTML=`<strong>星期${day.name}</strong><small>${esc(dateText(date))}</small>`;root.appendChild(h);}
-  for(const period of periods){const l=document.createElement("div");l.className="period-label";l.innerHTML=`<strong>第${period.number}節</strong><span>${esc(period.time)}</span>`;root.appendChild(l);for(const day of days){const cell=document.createElement("div");cell.className="course-cell";const items=coursesForCell(day.key,period.number);if(!items.length){cell.innerHTML=`<div class="empty-cell">—</div>`;}else{for(const item of items){const c=item.course,t=item.time;const b=document.createElement("button");b.type="button";b.className="course-card";b.innerHTML=`<div class="course-name">${esc(displayName(c))}</div><div class="course-meta">${esc(t.teacher||"")}${t.room?`　${esc(t.room)}`:""}</div>${state.display.showSeat&&c.seatNumber?`<div class="course-seat">座號 ${esc(c.seatNumber)}</div>`:""}`;b.addEventListener("click",()=>openCourse(c.id));cell.appendChild(b);}}root.appendChild(cell);}}
-}
-function renderSettings(){
-  const dc=$("dayChecks");
-  if(dc){
-    dc.innerHTML="";
-    for(const d of DAYS){
-      const label=document.createElement("label");
-      label.className="toggle-item";
-      label.innerHTML=`<span>星期${d.name}</span><input type="checkbox" ${state.display.days[d.key]?"checked":""}>`;
-      label.querySelector("input")?.addEventListener("change",e=>{state.display.days[d.key]=e.target.checked;saveState();renderSchedule();});
-      dc.appendChild(label);
-    }
-  }
-  const pc=$("periodChecks");
-  if(pc){
-    pc.innerHTML="";
-    for(const p of PERIODS){
-      const label=document.createElement("label");
-      label.className="toggle-item";
-      label.innerHTML=`<span>第${p.number}節<small>${esc(p.time)}</small></span><input type="checkbox" ${state.display.periods[p.number]?"checked":""}>`;
-      label.querySelector("input")?.addEventListener("change",e=>{state.display.periods[p.number]=e.target.checked;saveState();renderSchedule();});
-      pc.appendChild(label);
-    }
-  }
-  const seat=$("showSeat"); if(seat) seat.checked=!!state.display.showSeat;
-}
-
-function showSheet(id){$("overlay")?.classList.remove("hidden");$(id)?.classList.remove("hidden");document.body.style.overflow="hidden";}
-function hideSheets(){$("overlay")?.classList.add("hidden");$("coursePanel")?.classList.add("hidden");$("settingsPanel")?.classList.add("hidden");document.body.style.overflow="";currentCourseId=null;}
-function openCourse(id){const c=getCourse(id);if(!c)return;currentCourseId=String(id);document.getElementById("courseTitle").textContent=displayName(c);document.getElementById("courseSubtitle").textContent=[c.department,c.className].filter(Boolean).join(" · ");document.getElementById("customName").value=c.customName||"";document.getElementById("schoolName").textContent=c.name||"—";document.getElementById("courseIdText").textContent=c.id||"—";document.getElementById("seatNumber").textContent=c.seatNumber||"—";document.getElementById("credits").textContent=c.credits||"—";document.getElementById("department").textContent=c.department||"—";document.getElementById("gradeClass").textContent=[c.grade,c.className].filter(Boolean).join(" / ")||"—";document.getElementById("description").value=c.description||"";document.getElementById("note").value=c.note||"";const times=document.getElementById("timesList");times.innerHTML="";for(const t of c.times||[]){const day=DAYS.find(d=>d.key===Number(t.day));const el=document.createElement("div");el.className="time-item";el.innerHTML=`<div class="time-title">星期${esc(day?.name||t.day)} · 第${esc((t.periods||[]).join("、"))}節</div><div class="time-sub">教室：${esc(t.room||"—")}</div><div class="time-teacher">授課：${esc(t.teacher||"—")}</div>`;times.appendChild(el);}document.getElementById("courseLinks").innerHTML=c.pdf?`<a href="${esc(c.pdf)}" target="_blank" rel="noopener">查看課程資料 ↗</a>`:"";renderJournal(c);showSheet("coursePanel");}
-function renderJournal(c){const list=document.getElementById("journalList");list.innerHTML="";if(!c.journal?.length){list.innerHTML=`<div class="hint">尚無記事。</div>`;return;}for(const j of c.journal){const el=document.createElement("div");el.className="journal-item";el.innerHTML=`<strong>${esc(j.date)}</strong><div>${esc(j.text)}</div>`;list.appendChild(el);}}
-function saveCourse(){const c=getCourse(currentCourseId);if(!c)return;c.customName=document.getElementById("customName").value.trim();c.description=document.getElementById("description").value;c.note=document.getElementById("note").value;saveState();hideSheets();renderAll();}
-function addJournal(){const c=getCourse(currentCourseId);if(!c)return;const text=prompt("輸入記事內容：");if(!text?.trim())return;c.journal=Array.isArray(c.journal)?c.journal:[];c.journal.unshift({id:uid(),date:new Date().toLocaleString("zh-TW",{hour12:false}),text:text.trim()});saveState();renderJournal(c);}
-function clearCourses(){if(!confirm("確定清除課表嗎？自訂課名、備註、記事與顯示設定會保留。"))return;state.courses=[];state.semester="";saveState();hideSheets();renderAll();}
-function logoutApp(){if(!confirm("確定清除本機所有資料與本分頁 TKU 授權參數嗎？"))return;localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(WORKER_KEY);setSessionQ("");state=normalise({});hideSheets();renderAll();}
-function loadDemo(){if(!confirm("載入範例課表，會取代目前本機課表。"))return;state=clone(DEMO);saveState();hideSheets();renderAll();}
-function exportJSON(){const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="tku-timetable.json";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),500);}
-async function importJSON(file){try{state=normalise(JSON.parse(await file.text()));saveState();renderAll();alert("匯入成功。");}catch(e){alert(`匯入失敗：${e.message}`);}}
-function showMessage(text){const box=document.getElementById("messagePanel");box.textContent=text;box.classList.remove("hidden");clearTimeout(showMessage.timer);showMessage.timer=setTimeout(()=>box.classList.add("hidden"),7000);}
-function setBusy(busy){for(const id of ["workerProbeButton","workerSyncButton","tkuLoginButton","pasteAuthButton"]){const b=document.getElementById(id);if(b)b.disabled=busy;}}
-
-function unwrapApiPayload(payload){
-  if(Array.isArray(payload))return payload;
-  if(!payload||typeof payload!=="object")return [];
-  for(const key of ["data","rows","items","result","courses","records","value"]){if(key in payload){const x=unwrapApiPayload(payload[key]);if(x.length)return x;}}
-  return [];
-}
-function parsePeriod(v){const s=String(v??"").trim();if(!s)return[];return s.split(/[、,\s\/\-]+/).flatMap(part=>{const n=parseInt(part,10);return Number.isFinite(n)?[n]:[];}).filter(n=>n>=1&&n<=14);}
-function parseDay(v){const map={"一":1,"二":2,"三":3,"四":4,"五":5,"六":6,"日":7,"天":7};const s=String(v??"").trim();if(map[s])return map[s];const n=parseInt(s,10);return n>=1&&n<=7?n:0;}
-function rowToTime(row){const day=parseDay(row.week??row.weekno??row.day??row.weekday);const periods=parsePeriod(row.sessno??row.period??row.periods??row.section);return day&&periods.length?{day,periods,room:String(row.room??row.classroom??"").replace(/\s+/g," ").trim(),teacher:String(row.teach_name??row.teacher??row.teacherName??"").trim()}:null;}
-function rowCourseKey(row){const name=String(row.ch_cos_name??row.courseName??row.name??"").trim();const seat=String(row.seatno??row.seatNumber??row.seat??"").trim();return `${name}|||${seat}`;}
-function normalizeILifeResponse(payload){
-  const rows=unwrapApiPayload(payload);const map=new Map();
-  for(const row of rows){if(!row||typeof row!=="object")continue;const time=rowToTime(row);if(!time)continue;const name=String(row.ch_cos_name??row.courseName??row.name??"").trim();if(!name)continue;const key=rowCourseKey(row);let c=map.get(key);if(!c){c={id:uid(),name,customName:"",department:String(row.department??row.dept??"").trim(),grade:String(row.grade??"").trim(),className:String(row.className??row.class??"").trim(),credits:String(row.credits??row.credit??"").trim(),seatNumber:String(row.seatno??row.seatNumber??row.seat??"").trim(),pdf:String(row.pdf??row.url??"").trim(),description:String(row.description??row.note??"").trim(),times:[],note:"",journal:[]};map.set(key,c);}if(!c.times.some(t=>t.day===time.day&&JSON.stringify(t.periods)===JSON.stringify(time.periods)&&t.room===time.room&&t.teacher===time.teacher))c.times.push(time);}
-  return {courses:[...map.values()],semester:""};
-}
-function mergeImportedCourses(normalized){
-  const oldByKey=new Map(state.courses.map(c=>[`${c.name}|||${c.seatNumber||""}`,c]));
-  const merged=normalized.courses.map(n=>{const o=oldByKey.get(`${n.name}|||${n.seatNumber||""}`);return o?{...n,id:o.id,customName:o.customName,note:o.note,journal:o.journal,description:o.description||n.description}:n;});
-  state.courses=merged;
-  if(normalized.semester)state.semester=normalized.semester;
-}
-
-function findAuthValueFromUrl(raw){
-  const text=String(raw||"").trim();
-  if(!text)return null;
-  let u;try{u=new URL(text);}catch{try{u=new URL(text,location.href);}catch{return null;}}
-  const keys=["q","token","access_token","ssotoken","sso_token","login_token","id_token","ticket","code"];
-  for(const k of keys){const v=u.searchParams.get(k);if(v)return {kind:k,value:v,url:u.toString()};}
-  if(u.hash){const h=new URLSearchParams(u.hash.replace(/^#/,""));for(const k of keys){const v=h.get(k);if(v)return {kind:k,value:v,url:u.toString()};}}
-  return null;
-}
-function saveAuthFromInput(raw){
-  const found=findAuthValueFromUrl(raw);
-  if(found){setSessionQ(found.value);renderHeader();return found;}
-  const direct=String(raw||"").trim();
-  if(direct && !/^https?:\/\//i.test(direct)){setSessionQ(direct);renderHeader();return {kind:"direct",value:direct,url:""};}
-  return null;
-}
-function openTKUSSO(){
-  window.open(SSO_URL,"_blank","noopener");
-  showMessage("已開啟淡江登入。登入完成後，請複製登入完成頁面的完整網址，回到本頁貼到「SSO／API 回傳網址」欄位。不要把帳號、密碼、Cookie 貼給任何人。");
-}
-async function workerJSON(path,body){
-  const base=getWorkerBase();if(!base)throw new Error("請先填入 Cloudflare Worker 網址");
-  const r=await fetch(base+path,{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(body||{})});
-  const x=await r.json().catch(()=>null);if(!x)throw new Error(`Worker 回傳非 JSON（HTTP ${r.status}）`);return x;
-}
-async function testWorker(){
-  setBusy(true);try{const x=await workerJSON("/api/tku-probe",{q:getSessionQ()});const parts=[`Worker ${x.workerStatus??200}`,`TKU HTTP ${x.tkuStatus??"?"}`];if(x.contentType)parts.push(x.contentType);if(x.hasSetCookie)parts.push("TKU 回傳 Set-Cookie");if(x.bodySnippet)parts.push(`內容：${x.bodySnippet}`);showMessage(parts.join("｜"));}catch(e){showMessage(`Worker 測試失敗：${e.message}`);}finally{setBusy(false);}}
-async function syncViaWorker(){
-  setBusy(true);try{const q=getSessionQ();if(!q)throw new Error("還沒有 TKU 授權參數。先登入 TKU，再把登入完成網址貼到欄位並儲存。");const x=await workerJSON("/api/tku-course",{q});if(!x.ok)throw new Error(`${x.reason||"TKU API 沒有回傳課表"}${x.bodySnippet?`｜內容：${x.bodySnippet}`:""}`);const normalized=normalizeILifeResponse(x.data);if(!normalized.courses.length)throw new Error("Worker 有收到資料，但辨識不到課程。請把 Worker 回應貼給我檢查格式。");mergeImportedCourses(normalized);saveState();renderAll();showMessage(`成功取得 ${normalized.courses.length} 門課程。`);}catch(e){showMessage(`雲端同步失敗：${e.message}`);}finally{setBusy(false);}}
-function applyAuthInput(){
-  const raw=$("tkuAuthInput")?.value.trim()||"";const found=saveAuthFromInput(raw);if(!found){showMessage("找不到可使用的 q／token／code。請貼上完整 SSO／API 回傳網址。若你只拿到一個授權字串，也可以直接貼字串。");return;}showMessage(`已保存 TKU 授權參數（${found.kind}）。現在可以按「測試 Worker → TKU」；若測試回傳 JSON，再按「抓取課表」。`);
-}
-function clearAuth(){setSessionQ("");setValue("tkuAuthInput","");renderHeader();showMessage("本分頁 TKU 授權參數已清除。")}
-function openILifeApiPopup(){window.open(DIRECT_BROWSER_API,"_blank","noopener");showMessage("已開啟 TKU 課表 API。這只是手動驗證用；真正同步請使用 SSO 回傳授權參數 + Cloudflare Worker。")}
-function copyApiTemplate(){const text=`${TKU_API_BASE}?q=請貼上授權參數`;navigator.clipboard?.writeText(text).then(()=>showMessage("已複製 API URL 範例。"),()=>showMessage(text));}
-
-function renderAll(){renderHeader();renderSchedule();renderSettings();document.getElementById("networkStatus").textContent=navigator.onLine?"目前有網路":"離線可用";}
-
-function openSettingsPanel(){
-  try { renderSettings(); renderHeader(); } catch (e) { console.error("renderSettings/renderHeader failed", e); }
-  $("overlay")?.classList.remove("hidden");
-  $("settingsPanel")?.classList.remove("hidden");
-  document.body.style.overflow="hidden";
-}
-window.__openSettingsFallback = openSettingsPanel;
-
-function bindEvents(){
-  on("prevWeek","click",()=>{currentWeekOffset--;renderHeader();renderSchedule();});
-  on("nextWeek","click",()=>{currentWeekOffset++;renderHeader();renderSchedule();});
-  on("todayButton","click",()=>{currentWeekOffset=0;renderHeader();renderSchedule();});
-  on("settingsButton","click",openSettingsPanel);
-  document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",hideSheets));
-  on("overlay","click",e=>{if(e.target.id==="overlay")hideSheets();});
-  on("cancelCourse","click",hideSheets);
-  on("saveCourseButton","click",saveCourse);
-  on("addJournal","click",addJournal);
-  on("showSeat","change",e=>{state.display.showSeat=e.target.checked;saveState();renderSchedule();});
-  on("tkuLoginButton","click",openTKUSSO);
-  on("workerProbeButton","click",testWorker);
-  on("workerSyncButton","click",syncViaWorker);
-  on("pasteAuthButton","click",applyAuthInput);
-  on("clearAuthButton","click",clearAuth);
-  on("openIlifeApiButton","click",openILifeApiPopup);
-  on("copyApiTemplateButton","click",copyApiTemplate);
-  on("loadDemo","click",loadDemo);
-  on("clearCoursesButton","click",clearCourses);
-  on("logoutAppButton","click",logoutApp);
-  on("exportData","click",exportJSON);
-  on("importData","change",e=>{const f=e.target.files?.[0];if(f)importJSON(f);e.target.value="";});
-  on("importILifeJsonButton","click",()=>{try{const input=$("ilifeJsonInput");const raw=input?.value.trim();if(!raw)throw new Error("請先貼上 JSON");const normalized=normalizeILifeResponse(JSON.parse(raw));if(!normalized.courses.length)throw new Error("JSON 中找不到可辨識課程");mergeImportedCourses(normalized);saveState();renderAll();if(input)input.value="";showMessage(`iLife JSON 匯入完成：${normalized.courses.length} 門課程。`);}catch(e){alert(`iLife JSON 匯入失敗：${e.message}`);}});
-  on("saveWorkerBaseButton","click",()=>{const v=$("workerBaseInput")?.value.trim()||"";if(!/^https:\/\//i.test(v)){alert("Worker 網址必須是 https:// 開頭。");return;}localStorage.setItem(WORKER_KEY,v.replace(/\/+$/g,""));renderHeader();showMessage("Cloudflare Worker 網址已儲存。");});
-  window.addEventListener("online",renderAll);
-  window.addEventListener("offline",renderAll);
-  if("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker.js").catch(console.error);
-}
-
-function boot(){
-  try {
-    bindEvents();
-    const found=findAuthValueFromUrl(location.href);
-    if(found){
-      setSessionQ(found.value);
-      const u=new URL(location.href);
-      ["q","token","access_token","ssotoken","sso_token","login_token","id_token","ticket","code"].forEach(k=>u.searchParams.delete(k));
-      u.hash="";
-      history.replaceState({},document.title,u.pathname+u.search);
-    }
-    renderAll();
-  } catch(e) {
-    console.error("TKU timetable boot error", e);
-    // 最重要的 UI 仍然可開啟
-    window.__openSettingsFallback();
-  }
-}
-if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, {once:true});
-else boot();
-
-</script>
+  <script src="./app.js"></script>
 </body>
 </html>

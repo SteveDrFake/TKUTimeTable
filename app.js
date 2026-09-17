@@ -190,35 +190,61 @@ function copyApiTemplate(){const text=`${TKU_API_BASE}?q=請貼上授權參數`;
 
 function renderAll(){renderHeader();renderSchedule();renderSettings();document.getElementById("networkStatus").textContent=navigator.onLine?"目前有網路":"離線可用";}
 
-on("prevWeek","click",()=>{currentWeekOffset--;renderHeader();renderSchedule();});
-on("nextWeek","click",()=>{currentWeekOffset++;renderHeader();renderSchedule();});
-on("todayButton","click",()=>{currentWeekOffset=0;renderHeader();renderSchedule();});
-on("settingsButton","click",()=>{renderSettings();renderHeader();showSheet("settingsPanel");});
-document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",hideSheets));
-on("overlay","click",e=>{if(e.target.id==="overlay")hideSheets();});
-on("cancelCourse","click",hideSheets);
-on("saveCourseButton","click",saveCourse);
-on("addJournal","click",addJournal);
-on("showSeat","change",e=>{state.display.showSeat=e.target.checked;saveState();renderSchedule();});
-on("tkuLoginButton","click",openTKUSSO);
-on("workerProbeButton","click",testWorker);
-on("workerSyncButton","click",syncViaWorker);
-on("pasteAuthButton","click",applyAuthInput);
-on("clearAuthButton","click",clearAuth);
-on("openIlifeApiButton","click",openILifeApiPopup);
-on("copyApiTemplateButton","click",copyApiTemplate);
-on("loadDemo","click",loadDemo);
-on("clearCoursesButton","click",clearCourses);
-on("logoutAppButton","click",logoutApp);
-on("exportData","click",exportJSON);
-on("importData","change",e=>{const f=e.target.files?.[0];if(f)importJSON(f);e.target.value="";});
-on("importILifeJsonButton","click",()=>{try{const input=$("ilifeJsonInput");const raw=input?.value.trim();if(!raw)throw new Error("請先貼上 JSON");const normalized=normalizeILifeResponse(JSON.parse(raw));if(!normalized.courses.length)throw new Error("JSON 中找不到可辨識課程");mergeImportedCourses(normalized);saveState();renderAll();if(input)input.value="";showMessage(`iLife JSON 匯入完成：${normalized.courses.length} 門課程。`);}catch(e){alert(`iLife JSON 匯入失敗：${e.message}`);}});
-on("saveWorkerBaseButton","click",()=>{const v=$("workerBaseInput")?.value.trim()||"";if(!/^https:\/\//i.test(v)){alert("Worker 網址必須是 https:// 開頭。");return;}localStorage.setItem(WORKER_KEY,v.replace(/\/+$/g,""));renderHeader();showMessage("Cloudflare Worker 網址已儲存。");});
+function openSettingsPanel(){
+  try { renderSettings(); renderHeader(); } catch (e) { console.error("renderSettings/renderHeader failed", e); }
+  $("overlay")?.classList.remove("hidden");
+  $("settingsPanel")?.classList.remove("hidden");
+  document.body.style.overflow="hidden";
+}
+window.__openSettingsFallback = openSettingsPanel;
 
-window.addEventListener("online",renderAll);window.addEventListener("offline",renderAll);
-if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(console.error));
+function bindEvents(){
+  on("prevWeek","click",()=>{currentWeekOffset--;renderHeader();renderSchedule();});
+  on("nextWeek","click",()=>{currentWeekOffset++;renderHeader();renderSchedule();});
+  on("todayButton","click",()=>{currentWeekOffset=0;renderHeader();renderSchedule();});
+  on("settingsButton","click",openSettingsPanel);
+  document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",hideSheets));
+  on("overlay","click",e=>{if(e.target.id==="overlay")hideSheets();});
+  on("cancelCourse","click",hideSheets);
+  on("saveCourseButton","click",saveCourse);
+  on("addJournal","click",addJournal);
+  on("showSeat","change",e=>{state.display.showSeat=e.target.checked;saveState();renderSchedule();});
+  on("tkuLoginButton","click",openTKUSSO);
+  on("workerProbeButton","click",testWorker);
+  on("workerSyncButton","click",syncViaWorker);
+  on("pasteAuthButton","click",applyAuthInput);
+  on("clearAuthButton","click",clearAuth);
+  on("openIlifeApiButton","click",openILifeApiPopup);
+  on("copyApiTemplateButton","click",copyApiTemplate);
+  on("loadDemo","click",loadDemo);
+  on("clearCoursesButton","click",clearCourses);
+  on("logoutAppButton","click",logoutApp);
+  on("exportData","click",exportJSON);
+  on("importData","change",e=>{const f=e.target.files?.[0];if(f)importJSON(f);e.target.value="";});
+  on("importILifeJsonButton","click",()=>{try{const input=$("ilifeJsonInput");const raw=input?.value.trim();if(!raw)throw new Error("請先貼上 JSON");const normalized=normalizeILifeResponse(JSON.parse(raw));if(!normalized.courses.length)throw new Error("JSON 中找不到可辨識課程");mergeImportedCourses(normalized);saveState();renderAll();if(input)input.value="";showMessage(`iLife JSON 匯入完成：${normalized.courses.length} 門課程。`);}catch(e){alert(`iLife JSON 匯入失敗：${e.message}`);}});
+  on("saveWorkerBaseButton","click",()=>{const v=$("workerBaseInput")?.value.trim()||"";if(!/^https:\/\//i.test(v)){alert("Worker 網址必須是 https:// 開頭。");return;}localStorage.setItem(WORKER_KEY,v.replace(/\/+$/g,""));renderHeader();showMessage("Cloudflare Worker 網址已儲存。");});
+  window.addEventListener("online",renderAll);
+  window.addEventListener("offline",renderAll);
+  if("serviceWorker" in navigator) navigator.serviceWorker.register("./service-worker.js").catch(console.error);
+}
 
-(function handleCallback(){
-  const found=findAuthValueFromUrl(location.href);if(found){setSessionQ(found.value);const u=new URL(location.href);["q","token","access_token","ssotoken","sso_token","login_token","id_token","ticket","code"].forEach(k=>u.searchParams.delete(k));u.hash="";history.replaceState({},document.title,u.pathname+u.search);}
-  renderAll();
-})();
+function boot(){
+  try {
+    bindEvents();
+    const found=findAuthValueFromUrl(location.href);
+    if(found){
+      setSessionQ(found.value);
+      const u=new URL(location.href);
+      ["q","token","access_token","ssotoken","sso_token","login_token","id_token","ticket","code"].forEach(k=>u.searchParams.delete(k));
+      u.hash="";
+      history.replaceState({},document.title,u.pathname+u.search);
+    }
+    renderAll();
+  } catch(e) {
+    console.error("TKU timetable boot error", e);
+    // 最重要的 UI 仍然可開啟
+    window.__openSettingsFallback();
+  }
+}
+if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, {once:true});
+else boot();

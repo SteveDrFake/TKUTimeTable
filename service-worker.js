@@ -1,9 +1,9 @@
-const CACHE = "tku-web-v14-cloudflare";
+const CACHE = "tku-web-v15-fixed";
 const ASSETS = [
   "./",
   "./index.html",
   "./style.css",
-  "./app.js",
+  "./app.js?v=15",
   "./manifest.json"
 ];
 

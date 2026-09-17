@@ -1,6 +1,6 @@
-const STORAGE_KEY = "tku_timetable_v14";
-const WORKER_KEY = "tku_cloudflare_worker_v14";
-const SESSION_Q_KEY = "tku_api_q_v14";
+const STORAGE_KEY = "tku_timetable_v15";
+const WORKER_KEY = "tku_cloudflare_worker_v15";
+const SESSION_Q_KEY = "tku_api_q_v15";
 const DIRECT_BROWSER_API = "https://ilifeapp.az.tku.edu.tw/api/stu/course";
 const TKU_API_BASE = "https://ilifeapi.az.tku.edu.tw/api/ilifeStuClassApi";
 const SSO_URL = "https://sso.tku.edu.tw/ilife/CoWork/AndroidSsoLogin.cshtml";
@@ -21,7 +21,7 @@ const DEFAULT_DISPLAY = {
   showSeat:true
 };
 const DEMO = {
-  version:14, semester:"115-1 範例", student:{name:"範例學生",studentId:"DEMO0000"},
+  version:15, semester:"115-1 範例", student:{name:"範例學生",studentId:"DEMO0000"},
   display:JSON.parse(JSON.stringify(DEFAULT_DISPLAY)),
   courses:[
     {id:"2952",name:"高等微積分",customName:"",department:"TSNXB",grade:"2",className:"",credits:"3",seatNumber:"033",pdf:"http://ap09.emis.tku.edu.tw/115_1/115_1_2952.PDF",description:"",times:[{day:1,periods:[1,2],room:"S 420",teacher:"余"},{day:3,periods:[1],room:"S 420",teacher:"余"},{day:3,periods:[2],room:"S 420",teacher:"助教"}],note:"",journal:[]},
@@ -35,9 +35,15 @@ let state = loadState();
 let currentWeekOffset = 0;
 let currentCourseId = null;
 
+const $ = id => document.getElementById(id);
+const on = (id, event, handler, options) => { const el = $(id); if (el) el.addEventListener(event, handler, options); return el; };
+const setText = (id, value) => { const el = $(id); if (el) el.textContent = value; };
+const setValue = (id, value) => { const el = $(id); if (el) el.value = value; };
+
+
 function normalise(data){
   const x = data && typeof data === "object" ? data : {};
-  x.version = 14;
+  x.version = 15;
   x.semester = x.semester || "";
   x.student = x.student || {name:"",studentId:""};
   x.display = {
@@ -64,17 +70,18 @@ function visibleDays(){return DAYS.filter(d=>state.display.days[d.key]);}
 function visiblePeriods(){return PERIODS.filter(p=>state.display.periods[p.number]);}
 
 function renderHeader(){
-  document.getElementById("semesterText").textContent=state.semester?`學期：${state.semester}`:"本機課表";
-  document.getElementById("studentName").textContent=state.student?.name||"尚未登入";
-  document.getElementById("studentInfo").textContent=state.student?.studentId?`學號：${state.student.studentId}`:"可先使用範例資料測試課表";
-  document.getElementById("settingStudentName").textContent=state.student?.name||"尚未取得";
-  document.getElementById("settingStudentId").textContent=state.student?.studentId||"尚未取得";
-  document.getElementById("tokenStatus").textContent=getSessionQ()?"本分頁已有 TKU 授權參數":"尚未取得";
-  const wi=document.getElementById("workerBaseInput");if(wi)wi.value=getWorkerBase();
-  const qi=document.getElementById("tkuAuthInput");if(qi)qi.value=getSessionQ();
+  setText("semesterText", state.semester?`學期：${state.semester}`:"本機課表");
+  setText("studentName", state.student?.name||"尚未登入");
+  setText("studentInfo", state.student?.studentId?`學號：${state.student.studentId}`:"可先使用範例資料測試課表");
+  setText("settingStudentName", state.student?.name||"尚未取得");
+  setText("settingStudentId", state.student?.studentId||"尚未取得");
+  setText("tokenStatus", getSessionQ()?"本分頁已有 TKU 授權參數":"尚未取得");
+  setValue("workerBaseInput", getWorkerBase());
+  setValue("tkuAuthInput", getSessionQ());
   const mon=getMonday(currentWeekOffset);const sun=new Date(mon);sun.setDate(sun.getDate()+6);
-  document.getElementById("weekText").textContent=`${dateText(mon)} ～ ${dateText(sun)}`;
+  setText("weekText", `${dateText(mon)} ～ ${dateText(sun)}`);
 }
+
 function coursesForCell(day,period){const found=[];for(const c of state.courses){for(const t of c.times||[]){if(Number(t.day)!==day)continue;if(!(t.periods||[]).map(Number).includes(period))continue;found.push({course:c,time:t});}}return found;}
 function renderSchedule(){
   const root=document.getElementById("schedule");root.innerHTML="";const days=visibleDays();const periods=visiblePeriods();root.style.setProperty("--day-count",String(days.length));
@@ -84,12 +91,33 @@ function renderSchedule(){
   for(const period of periods){const l=document.createElement("div");l.className="period-label";l.innerHTML=`<strong>第${period.number}節</strong><span>${esc(period.time)}</span>`;root.appendChild(l);for(const day of days){const cell=document.createElement("div");cell.className="course-cell";const items=coursesForCell(day.key,period.number);if(!items.length){cell.innerHTML=`<div class="empty-cell">—</div>`;}else{for(const item of items){const c=item.course,t=item.time;const b=document.createElement("button");b.type="button";b.className="course-card";b.innerHTML=`<div class="course-name">${esc(displayName(c))}</div><div class="course-meta">${esc(t.teacher||"")}${t.room?`　${esc(t.room)}`:""}</div>${state.display.showSeat&&c.seatNumber?`<div class="course-seat">座號 ${esc(c.seatNumber)}</div>`:""}`;b.addEventListener("click",()=>openCourse(c.id));cell.appendChild(b);}}root.appendChild(cell);}}
 }
 function renderSettings(){
-  const dc=document.getElementById("dayChecks");dc.innerHTML="";for(const d of DAYS){const label=document.createElement("label");label.className="toggle-item";label.innerHTML=`<span>星期${d.name}</span><input type="checkbox" ${state.display.days[d.key]?"checked":""}>`;label.querySelector("input").addEventListener("change",e=>{state.display.days[d.key]=e.target.checked;saveState();renderSchedule();});dc.appendChild(label);}
-  const pc=document.getElementById("periodChecks");pc.innerHTML="";for(const p of PERIODS){const label=document.createElement("label");label.className="toggle-item";label.innerHTML=`<span>第${p.number}節<small>${esc(p.time)}</small></span><input type="checkbox" ${state.display.periods[p.number]?"checked":""}>`;label.querySelector("input").addEventListener("change",e=>{state.display.periods[p.number]=e.target.checked;saveState();renderSchedule();});pc.appendChild(label);}
-  document.getElementById("showSeat").checked=!!state.display.showSeat;
+  const dc=$("dayChecks");
+  if(dc){
+    dc.innerHTML="";
+    for(const d of DAYS){
+      const label=document.createElement("label");
+      label.className="toggle-item";
+      label.innerHTML=`<span>星期${d.name}</span><input type="checkbox" ${state.display.days[d.key]?"checked":""}>`;
+      label.querySelector("input")?.addEventListener("change",e=>{state.display.days[d.key]=e.target.checked;saveState();renderSchedule();});
+      dc.appendChild(label);
+    }
+  }
+  const pc=$("periodChecks");
+  if(pc){
+    pc.innerHTML="";
+    for(const p of PERIODS){
+      const label=document.createElement("label");
+      label.className="toggle-item";
+      label.innerHTML=`<span>第${p.number}節<small>${esc(p.time)}</small></span><input type="checkbox" ${state.display.periods[p.number]?"checked":""}>`;
+      label.querySelector("input")?.addEventListener("change",e=>{state.display.periods[p.number]=e.target.checked;saveState();renderSchedule();});
+      pc.appendChild(label);
+    }
+  }
+  const seat=$("showSeat"); if(seat) seat.checked=!!state.display.showSeat;
 }
-function showSheet(id){document.getElementById("overlay").classList.remove("hidden");document.getElementById(id).classList.remove("hidden");document.body.style.overflow="hidden";}
-function hideSheets(){document.getElementById("overlay").classList.add("hidden");document.getElementById("coursePanel").classList.add("hidden");document.getElementById("settingsPanel").classList.add("hidden");document.body.style.overflow="";currentCourseId=null;}
+
+function showSheet(id){$("overlay")?.classList.remove("hidden");$(id)?.classList.remove("hidden");document.body.style.overflow="hidden";}
+function hideSheets(){$("overlay")?.classList.add("hidden");$("coursePanel")?.classList.add("hidden");$("settingsPanel")?.classList.add("hidden");document.body.style.overflow="";currentCourseId=null;}
 function openCourse(id){const c=getCourse(id);if(!c)return;currentCourseId=String(id);document.getElementById("courseTitle").textContent=displayName(c);document.getElementById("courseSubtitle").textContent=[c.department,c.className].filter(Boolean).join(" · ");document.getElementById("customName").value=c.customName||"";document.getElementById("schoolName").textContent=c.name||"—";document.getElementById("courseIdText").textContent=c.id||"—";document.getElementById("seatNumber").textContent=c.seatNumber||"—";document.getElementById("credits").textContent=c.credits||"—";document.getElementById("department").textContent=c.department||"—";document.getElementById("gradeClass").textContent=[c.grade,c.className].filter(Boolean).join(" / ")||"—";document.getElementById("description").value=c.description||"";document.getElementById("note").value=c.note||"";const times=document.getElementById("timesList");times.innerHTML="";for(const t of c.times||[]){const day=DAYS.find(d=>d.key===Number(t.day));const el=document.createElement("div");el.className="time-item";el.innerHTML=`<div class="time-title">星期${esc(day?.name||t.day)} · 第${esc((t.periods||[]).join("、"))}節</div><div class="time-sub">教室：${esc(t.room||"—")}</div><div class="time-teacher">授課：${esc(t.teacher||"—")}</div>`;times.appendChild(el);}document.getElementById("courseLinks").innerHTML=c.pdf?`<a href="${esc(c.pdf)}" target="_blank" rel="noopener">查看課程資料 ↗</a>`:"";renderJournal(c);showSheet("coursePanel");}
 function renderJournal(c){const list=document.getElementById("journalList");list.innerHTML="";if(!c.journal?.length){list.innerHTML=`<div class="hint">尚無記事。</div>`;return;}for(const j of c.journal){const el=document.createElement("div");el.className="journal-item";el.innerHTML=`<strong>${esc(j.date)}</strong><div>${esc(j.text)}</div>`;list.appendChild(el);}}
 function saveCourse(){const c=getCourse(currentCourseId);if(!c)return;c.customName=document.getElementById("customName").value.trim();c.description=document.getElementById("description").value;c.note=document.getElementById("note").value;saveState();hideSheets();renderAll();}
@@ -154,38 +182,39 @@ async function testWorker(){
 async function syncViaWorker(){
   setBusy(true);try{const q=getSessionQ();if(!q)throw new Error("還沒有 TKU 授權參數。先登入 TKU，再把登入完成網址貼到欄位並儲存。");const x=await workerJSON("/api/tku-course",{q});if(!x.ok)throw new Error(`${x.reason||"TKU API 沒有回傳課表"}${x.bodySnippet?`｜內容：${x.bodySnippet}`:""}`);const normalized=normalizeILifeResponse(x.data);if(!normalized.courses.length)throw new Error("Worker 有收到資料，但辨識不到課程。請把 Worker 回應貼給我檢查格式。");mergeImportedCourses(normalized);saveState();renderAll();showMessage(`成功取得 ${normalized.courses.length} 門課程。`);}catch(e){showMessage(`雲端同步失敗：${e.message}`);}finally{setBusy(false);}}
 function applyAuthInput(){
-  const raw=document.getElementById("tkuAuthInput").value.trim();const found=saveAuthFromInput(raw);if(!found){showMessage("找不到可使用的 q／token／code。請貼上完整 SSO／API 回傳網址。若你只拿到一個授權字串，也可以直接貼字串。");return;}showMessage(`已保存 TKU 授權參數（${found.kind}）。現在可以按「測試 Worker → TKU」；若測試回傳 JSON，再按「抓取課表」。`);
+  const raw=$("tkuAuthInput")?.value.trim()||"";const found=saveAuthFromInput(raw);if(!found){showMessage("找不到可使用的 q／token／code。請貼上完整 SSO／API 回傳網址。若你只拿到一個授權字串，也可以直接貼字串。");return;}showMessage(`已保存 TKU 授權參數（${found.kind}）。現在可以按「測試 Worker → TKU」；若測試回傳 JSON，再按「抓取課表」。`);
 }
-function clearAuth(){setSessionQ("");document.getElementById("tkuAuthInput").value="";renderHeader();showMessage("本分頁 TKU 授權參數已清除。")}
+function clearAuth(){setSessionQ("");setValue("tkuAuthInput","");renderHeader();showMessage("本分頁 TKU 授權參數已清除。")}
 function openILifeApiPopup(){window.open(DIRECT_BROWSER_API,"_blank","noopener");showMessage("已開啟 TKU 課表 API。這只是手動驗證用；真正同步請使用 SSO 回傳授權參數 + Cloudflare Worker。")}
 function copyApiTemplate(){const text=`${TKU_API_BASE}?q=請貼上授權參數`;navigator.clipboard?.writeText(text).then(()=>showMessage("已複製 API URL 範例。"),()=>showMessage(text));}
 
 function renderAll(){renderHeader();renderSchedule();renderSettings();document.getElementById("networkStatus").textContent=navigator.onLine?"目前有網路":"離線可用";}
 
-document.getElementById("prevWeek").addEventListener("click",()=>{currentWeekOffset--;renderHeader();renderSchedule();});
-document.getElementById("nextWeek").addEventListener("click",()=>{currentWeekOffset++;renderHeader();renderSchedule();});
-document.getElementById("todayButton").addEventListener("click",()=>{currentWeekOffset=0;renderHeader();renderSchedule();});
-document.getElementById("settingsButton").addEventListener("click",()=>{renderSettings();renderHeader();showSheet("settingsPanel");});
+on("prevWeek","click",()=>{currentWeekOffset--;renderHeader();renderSchedule();});
+on("nextWeek","click",()=>{currentWeekOffset++;renderHeader();renderSchedule();});
+on("todayButton","click",()=>{currentWeekOffset=0;renderHeader();renderSchedule();});
+on("settingsButton","click",()=>{renderSettings();renderHeader();showSheet("settingsPanel");});
 document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",hideSheets));
-document.getElementById("overlay").addEventListener("click",e=>{if(e.target.id==="overlay")hideSheets();});
-document.getElementById("cancelCourse").addEventListener("click",hideSheets);
-document.getElementById("saveCourseButton").addEventListener("click",saveCourse);
-document.getElementById("addJournal").addEventListener("click",addJournal);
-document.getElementById("showSeat").addEventListener("change",e=>{state.display.showSeat=e.target.checked;saveState();renderSchedule();});
-document.getElementById("tkuLoginButton").addEventListener("click",openTKUSSO);
-document.getElementById("workerProbeButton").addEventListener("click",testWorker);
-document.getElementById("workerSyncButton").addEventListener("click",syncViaWorker);
-document.getElementById("pasteAuthButton").addEventListener("click",applyAuthInput);
-document.getElementById("clearAuthButton").addEventListener("click",clearAuth);
-document.getElementById("openIlifeApiButton").addEventListener("click",openILifeApiPopup);
-document.getElementById("copyApiTemplateButton").addEventListener("click",copyApiTemplate);
-document.getElementById("loadDemo").addEventListener("click",loadDemo);
-document.getElementById("clearCoursesButton").addEventListener("click",clearCourses);
-document.getElementById("logoutAppButton").addEventListener("click",logoutApp);
-document.getElementById("exportData").addEventListener("click",exportJSON);
-document.getElementById("importData").addEventListener("change",e=>{const f=e.target.files?.[0];if(f)importJSON(f);e.target.value="";});
-document.getElementById("importILifeJsonButton").addEventListener("click",()=>{try{const raw=document.getElementById("ilifeJsonInput").value.trim();if(!raw)throw new Error("請先貼上 JSON");const normalized=normalizeILifeResponse(JSON.parse(raw));if(!normalized.courses.length)throw new Error("JSON 中找不到可辨識課程");mergeImportedCourses(normalized);saveState();renderAll();document.getElementById("ilifeJsonInput").value="";showMessage(`iLife JSON 匯入完成：${normalized.courses.length} 門課程。`);}catch(e){alert(`iLife JSON 匯入失敗：${e.message}`);}});
-document.getElementById("saveWorkerBaseButton").addEventListener("click",()=>{const v=document.getElementById("workerBaseInput").value.trim();if(!/^https:\/\//i.test(v)){alert("Worker 網址必須是 https:// 開頭。");return;}localStorage.setItem(WORKER_KEY,v.replace(/\/+$/g,""));renderHeader();showMessage("Cloudflare Worker 網址已儲存。")});
+on("overlay","click",e=>{if(e.target.id==="overlay")hideSheets();});
+on("cancelCourse","click",hideSheets);
+on("saveCourseButton","click",saveCourse);
+on("addJournal","click",addJournal);
+on("showSeat","change",e=>{state.display.showSeat=e.target.checked;saveState();renderSchedule();});
+on("tkuLoginButton","click",openTKUSSO);
+on("workerProbeButton","click",testWorker);
+on("workerSyncButton","click",syncViaWorker);
+on("pasteAuthButton","click",applyAuthInput);
+on("clearAuthButton","click",clearAuth);
+on("openIlifeApiButton","click",openILifeApiPopup);
+on("copyApiTemplateButton","click",copyApiTemplate);
+on("loadDemo","click",loadDemo);
+on("clearCoursesButton","click",clearCourses);
+on("logoutAppButton","click",logoutApp);
+on("exportData","click",exportJSON);
+on("importData","change",e=>{const f=e.target.files?.[0];if(f)importJSON(f);e.target.value="";});
+on("importILifeJsonButton","click",()=>{try{const input=$("ilifeJsonInput");const raw=input?.value.trim();if(!raw)throw new Error("請先貼上 JSON");const normalized=normalizeILifeResponse(JSON.parse(raw));if(!normalized.courses.length)throw new Error("JSON 中找不到可辨識課程");mergeImportedCourses(normalized);saveState();renderAll();if(input)input.value="";showMessage(`iLife JSON 匯入完成：${normalized.courses.length} 門課程。`);}catch(e){alert(`iLife JSON 匯入失敗：${e.message}`);}});
+on("saveWorkerBaseButton","click",()=>{const v=$("workerBaseInput")?.value.trim()||"";if(!/^https:\/\//i.test(v)){alert("Worker 網址必須是 https:// 開頭。");return;}localStorage.setItem(WORKER_KEY,v.replace(/\/+$/g,""));renderHeader();showMessage("Cloudflare Worker 網址已儲存。");});
+
 window.addEventListener("online",renderAll);window.addEventListener("offline",renderAll);
 if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(console.error));
 

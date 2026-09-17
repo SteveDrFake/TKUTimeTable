@@ -1,9 +1,9 @@
-const CACHE = "tku-web-v16-fixed";
+const CACHE = "tku-web-v17-settings";
 const ASSETS = [
   "./",
   "./index.html",
   "./style.css",
-  "./app.js?v=16",
+  "./app.js?v=17",
   "./manifest.json"
 ];
 

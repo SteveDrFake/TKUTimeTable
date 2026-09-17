@@ -1,6 +1,6 @@
-const STORAGE_KEY = "tku_timetable_v15";
-const WORKER_KEY = "tku_cloudflare_worker_v15";
-const SESSION_Q_KEY = "tku_api_q_v15";
+const STORAGE_KEY = "tku_timetable_v17";
+const WORKER_KEY = "tku_cloudflare_worker_v17";
+const SESSION_Q_KEY = "tku_api_q_v17";
 const DIRECT_BROWSER_API = "https://ilifeapp.az.tku.edu.tw/api/stu/course";
 const TKU_API_BASE = "https://ilifeapi.az.tku.edu.tw/api/ilifeStuClassApi";
 const SSO_URL = "https://sso.tku.edu.tw/ilife/CoWork/AndroidSsoLogin.cshtml";
@@ -21,7 +21,7 @@ const DEFAULT_DISPLAY = {
   showSeat:true
 };
 const DEMO = {
-  version:15, semester:"115-1 範例", student:{name:"範例學生",studentId:"DEMO0000"},
+  version:17, semester:"115-1 範例", student:{name:"範例學生",studentId:"DEMO0000"},
   display:JSON.parse(JSON.stringify(DEFAULT_DISPLAY)),
   courses:[
     {id:"2952",name:"高等微積分",customName:"",department:"TSNXB",grade:"2",className:"",credits:"3",seatNumber:"033",pdf:"http://ap09.emis.tku.edu.tw/115_1/115_1_2952.PDF",description:"",times:[{day:1,periods:[1,2],room:"S 420",teacher:"余"},{day:3,periods:[1],room:"S 420",teacher:"余"},{day:3,periods:[2],room:"S 420",teacher:"助教"}],note:"",journal:[]},

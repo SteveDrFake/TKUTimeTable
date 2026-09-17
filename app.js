@@ -1,6 +1,6 @@
 const STORAGE_KEY = "tku_timetable_v10";
 const TOKEN_KEY = "tku_sso_token_v10";
-const API_KEY = "tku_ilife_api_v11";
+const API_KEY = "tku_ilife_api_v12";
 const DIRECT_BROWSER_API = "https://ilifeapp.az.tku.edu.tw/api/stu/course";
 const DEFAULT_API = "https://ilifeapi.az.tku.edu.tw/api/ilifeStuClassApi";
 const SSO_URL = "https://sso.tku.edu.tw/ilife/CoWork/AndroidSsoLogin.cshtml";
@@ -496,306 +496,23 @@ function extractTokenFromResponse(text, response){
   return "";
 }
 
-async function syncFromILife(explicitToken=""){
-  const token = explicitToken || getToken();
-  if(!token){
-    showMessage("目前沒有可用的淡江登入 Token。請先從「設定 → 前往淡江登入」開始。");
-    return false;
-  }
-
-  setSyncBusy(true);
-  try{
-    const base = getApiBase();
-    const url = `${base}${base.includes("?") ? "&" : "?"}q=${encodeURIComponent(token)}`;
-    const response = await fetch(url,{
-      method:"GET",
-      credentials:"include",
-      cache:"no-store"
-    });
-    const text = await response.text();
-    if(!response.ok) throw new Error(`HTTP ${response.status}`);
-
-    let data;
-    try{ data = JSON.parse(text); }
-    catch{ throw new Error("iLife API 回傳不是 JSON"); }
-
-    const normalized = normalizeILifeResponse(data);
-    if(!normalized.courses.length) {
-      throw new Error("API 有回應，但目前無法從回應中辨識課程資料。");
-    }
-
-    mergeImportedCourses(normalized);
-    saveState();
-    renderAll();
-    showMessage(`同步完成：取得 ${normalized.courses.length} 門課程。`);
-    return true;
-  }catch(e){
-    console.error(e);
-    showMessage(`同步失敗：${e.message}。若瀏覽器顯示 CORS，代表網頁版還需要後端代理。`);
-    return false;
-  }finally{
-    setSyncBusy(false);
-  }
+async function syncFromILife(){
+  openILifeApiPopup();
+  return true;
 }
 
-function mergeImportedCourses(data){
-  const existingById = new Map(state.courses.map(c=>[String(c.id),c]));
-  for(const incoming of data.courses){
-    const old = existingById.get(String(incoming.id));
-    if(old){
-      incoming.customName = old.customName || "";
-      incoming.note = old.note || "";
-      incoming.journal = Array.isArray(old.journal) ? old.journal : [];
-    }
-  }
-  state.courses = data.courses;
-  state.semester = data.semester || state.semester || "";
-  if(data.studentId) state.student.studentId = data.studentId;
-  if(data.studentName) state.student.name = data.studentName;
-}
-
-function normalizeKnownILifeCourseArray(list){
-  if(!Array.isArray(list)) return [];
-  const groups = new Map();
-  for(const row of list){
-    if(!row || typeof row !== "object") continue;
-    const name = String(row.ch_cos_name ?? row.courseName ?? "").trim();
-    if(!name) continue;
-    const seat = String(row.seatno ?? row.seatNumber ?? "").trim();
-    const key = `${name}\u0000${seat}`;
-    if(!groups.has(key)) groups.set(key,{
-      id:String(row.courseId ?? row.course_id ?? `ilife-${Array.from(key).reduce((a,ch)=>((a*31+ch.charCodeAt(0))>>>0),7)}`),
-      name,customName:"",department:"",grade:"",className:"",credits:"",seatNumber:seat,pdf:"",description:String(row.note ?? ""),times:[],note:"",journal:[]
-    });
-    const c=groups.get(key);
-    const day=parseDay(row.weekno ?? row.week ?? row.weekday);
-    const periods=parsePeriods(row.sessno ?? row.period ?? row.section);
-    if(day && periods.length){
-      const teacher=String(row.teach_name ?? row.teacher ?? "").trim();
-      const room=String(row.room ?? row.classroom ?? "").replace(/\s+/g," ").trim();
-      const sig=JSON.stringify([day,periods,room,teacher]);
-      if(!c.times.some(t=>JSON.stringify([t.day,t.periods,t.room,t.teacher])===sig)) c.times.push({day,periods,room,teacher});
-    }
-  }
-  return [...groups.values()].filter(c=>c.times.length);
-}
-
-function normalizeILifeResponse(payload){
-  const root = unwrapPayload(payload);
-  const list = findCourseArray(root);
-  const knownCourses = normalizeKnownILifeCourseArray(list);
-  const courses = knownCourses.length ? knownCourses : [];
-  if(!courses.length){
-    for(const item of list){
-      const c = normalizeCourse(item);
-      if(c) courses.push(c);
-    }
-  }
-  return {
-    semester: findAny(root, ["semester","term","schoolYearSemester","學期"]) || "",
-    studentId: findAny(root, ["studentId","student_id","idno","studentNo","學號"]) || "",
-    studentName: findAny(root, ["studentName","student_name","name","姓名"]) || "",
-    courses
-  };
-}
-
-function unwrapPayload(payload){
-  if(Array.isArray(payload)) return payload;
-  for(const k of ["data","result","results","items","rows","records","classSchedule","courseList","schedule"]){
-    if(payload && payload[k] != null) return payload[k];
-  }
-  return payload;
-}
-
-function findCourseArray(root){
-  if(Array.isArray(root)) return root;
-  if(!root || typeof root!=="object") return [];
-  for(const k of Object.keys(root)){
-    const v = root[k];
-    if(Array.isArray(v) && v.some(x=>x && typeof x==="object")){
-      const looks = v.some(x=>hasAnyKey(x,["courseId","course_id","開課序號","courseName","科目名稱","classTime","上課時間","weekday","day"]));
-      if(looks) return v;
-    }
-  }
-  return [];
-}
-
-function normalizeCourse(item){
-  if(!item || typeof item!=="object") return null;
-
-  const id = String(findAny(item,["courseId","course_id","id","開課序號","classId","class_id"]) ?? "").trim();
-  const name = String(findAny(item,["courseName","course_name","name","科目名稱","subjectName"]) ?? "").trim();
-  if(!id && !name) return null;
-
-  const timesRaw = [];
-  for(const k of ["times","time","classTimes","classTime","schedule","上課時間","授課時間"]){
-    const v = item[k];
-    if(Array.isArray(v)) timesRaw.push(...v);
-    else if(v && typeof v==="object") timesRaw.push(v);
-    else if(typeof v==="string" && v.trim()) timesRaw.push(...parseTimeString(v));
-  }
-
-  const simpleDay = findAny(item,["day","weekday","weekDay","上課星期","星期"]);
-  const simplePeriods = findAny(item,["periods","period","section","sections","節次","上課節次"]);
-  const simpleRoom = findAny(item,["room","classroom","教室","上課教室"]);
-  const simpleTeacher = findAny(item,["teacher","instructor","授課老師","老師"]);
-
-  if(!timesRaw.length && (simpleDay || simplePeriods)){
-    timesRaw.push({day:simpleDay,periods:simplePeriods,room:simpleRoom,teacher:simpleTeacher});
-  }
-
-  const times = [];
-  for(const t of timesRaw){
-    const nt = normalizeTime(t);
-    if(nt) times.push(nt);
-  }
-
-  if(!times.length) return null;
-
-  return {
-    id,
-    name,
-    customName:"",
-    department:String(findAny(item,["department","departmentCode","系所"]) ?? ""),
-    grade:String(findAny(item,["grade","年級"]) ?? ""),
-    className:String(findAny(item,["className","class","班別"]) ?? ""),
-    credits:String(findAny(item,["credits","credit","學分"]) ?? ""),
-    seatNumber:String(findAny(item,["seatNumber","seat","seatNo","座號"]) ?? ""),
-    pdf:String(findAny(item,["pdf","pdfUrl","coursePdf"]) ?? ""),
-    description:String(findAny(item,["description","courseDescription","課程說明"]) ?? ""),
-    times,
-    note:"",
-    journal:[]
-  };
-}
-
-function normalizeTime(t){
-  if(t==null) return null;
-  if(typeof t==="string"){
-    const parsed = parseTimeString(t);
-    return parsed[0] || null;
-  }
-  const dayValue = findAny(t,["day","weekday","weekDay","weekdayNo","week","上課星期","星期"]);
-  const pValue = findAny(t,["periods","period","section","sections","periodNo","節次","上課節次"]);
-  const room = String(findAny(t,["room","classroom","classRoom","location","roomName","教室","上課教室"]) ?? "");
-  const teacher = String(findAny(t,["teacher","instructor","teacherName","授課老師","老師"]) ?? "");
-  const day = parseDay(dayValue);
-  const periods = parsePeriods(pValue);
-  if(!day || !periods.length) return null;
-  return {day,periods,room,teacher};
-}
-
-function parseTimeString(s){
-  const text = String(s).replace(/\s+/g," ");
-  const dayMatch = text.match(/星期\s*([一二三四五六日])|週\s*([一二三四五六日])|([1-7])/);
-  const day = dayMatch ? (dayMatch[1]||dayMatch[2]||dayMatch[3]) : "";
-  const periods = parsePeriods((text.match(/(?:第)?\s*([0-9]{1,2}(?:\s*[,、\/-]\s*[0-9]{1,2})*)\s*(?:節|堂)/)?.[1]) || "");
-  const room = (text.match(/(?:教室|room|Room)\s*[:：]?\s*([A-Za-z0-9 ]+)/)?.[1] || "").trim();
-  const teacher = (text.match(/(?:老師|教師|teacher)\s*[:：]?\s*([^,， ]+)/)?.[1] || "").trim();
-  if(!day || !periods.length) return [];
-  return [{day:parseDay(day),periods,room,teacher}];
-}
-
-function parseDay(v){
-  const s = String(v ?? "").trim();
-  const map = {"一":1,"二":2,"三":3,"四":4,"五":5,"六":6,"日":7,"天":7};
-  if(map[s]) return map[s];
-  const n = Number(s);
-  if(Number.isInteger(n) && n>=1 && n<=7) return n;
-  return null;
-}
-
-function parsePeriods(v){
-  if(Array.isArray(v)) return v.flatMap(parsePeriods).filter(n=>n>=1&&n<=14);
-  const s = String(v ?? "").trim();
-  if(!s) return [];
-  const nums = s.match(/\d{1,2}/g)?.map(Number) || [];
-  return nums.filter(n=>n>=1&&n<=14);
-}
-
-function findAny(obj, keys){
-  if(!obj || typeof obj!=="object") return null;
-  for(const k of keys){
-    if(obj[k] != null && obj[k] !== "") return obj[k];
-  }
-  return null;
-}
-
-function hasAnyKey(obj, keys){
-  return keys.some(k=>Object.prototype.hasOwnProperty.call(obj,k));
-}
 
 async function testBrowserSession(){
-  setSyncBusy(true);
-  showMessage("正在測試瀏覽器目前的淡江登入 Session…");
-
-  try{
-    const base = getApiBase();
-
-    // 第一個測試：完全不帶 q token。
-    // 目的不是直接假設 API 一定能用，而是確認登入後的瀏覽器
-    // cookie/session 是否能被 ilife API 接受。
-    const response = await fetch(base,{
-      method:"GET",
-      credentials:"include",
-      cache:"no-store"
-    });
-
-    const text = await response.text();
-    const contentType = response.headers.get("content-type") || "";
-
-    if(!response.ok){
-      throw new Error(`HTTP ${response.status}${text ? `；${text.slice(0,180)}` : ""}`);
-    }
-
-    let payload = null;
-    try{
-      payload = JSON.parse(text);
-    }catch{}
-
-    if(payload){
-      const normalized = normalizeILifeResponse(payload);
-
-      if(normalized.courses.length){
-        mergeImportedCourses(normalized);
-        saveState();
-        renderAll();
-        showMessage(`成功：瀏覽器登入 Session 可以取得課表，共 ${normalized.courses.length} 門課。`);
-        return true;
-      }
-
-      const keys = payload && typeof payload === "object" ? Object.keys(payload).slice(0,12).join(", ") : "";
-      showMessage(`API 有回應 JSON，但目前沒有辨識出課程。${keys ? ` 回應欄位：${keys}` : ""}`);
-      return false;
-    }
-
-    showMessage(`API 有回應，但不是 JSON。Content-Type：${contentType || "未提供"}`);
-    return false;
-
-  }catch(e){
-    console.error("testBrowserSession:", e);
-
-    const msg = String(e?.message || e);
-    if(msg.includes("Failed to fetch") || msg.includes("NetworkError")){
-      showMessage("瀏覽器無法讀取 iLife API。很可能是 CORS；下一步需要小型後端代理。");
-    }else{
-      showMessage(`Session 測試失敗：${msg}`);
-    }
-    return false;
-  }finally{
-    setSyncBusy(false);
-  }
+  openILifeApiPopup();
+  showMessage("已改用免 CORS 測試：登入後在 TKU API 頁面執行「TKU 抓課表」書籤。網頁本身不會再直接 fetch TKU API。");
+  return true;
 }
+
 
 async function syncFromButton(){
-  const token = getToken();
-  if(!token){
-    openSettings();
-    showMessage("尚未取得登入 Token。");
-    return;
-  }
-  await syncFromILife(token);
+  openILifeApiPopup();
 }
+
 
 function openSettings(){
   renderSettings();
@@ -863,8 +580,15 @@ document.getElementById("copyCaptureBookmarkletButton").addEventListener("click"
 });
 
 window.addEventListener("message",event=>{
-  if(!event.origin || !event.origin.endsWith(".tku.edu.tw")) return;
-  if(event.data?.type === "TKU_ILIFE_API_TEXT") importBrowserApiText(event.data.text,"postMessage");
+  const allowed = new Set([
+    "https://ilifeapp.az.tku.edu.tw",
+    "https://ilifeapi.az.tku.edu.tw",
+    "https://sso.tku.edu.tw"
+  ]);
+  if(!allowed.has(event.origin)) return;
+  if(event.data?.type === "TKU_ILIFE_API_TEXT") {
+    importBrowserApiText(event.data.text,"postMessage");
+  }
 });
 
 document.getElementById("saveApiBaseButton").addEventListener("click",()=>{

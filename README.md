@@ -27,3 +27,10 @@ Fixed the Share Target inbox cache-key mismatch. The Service Worker and share.ht
 
 ## v10 share final
 Aligned share.html cache name with the Service Worker (`tku-timetable-share-v9`) and fixed literal `\\n` display in status messages.
+
+
+### 手機分享同步注意事項
+
+PWA 的 Share Target 可以收到系統分享過來的文字或檔案，但瀏覽器不一定會把目前網頁顯示的 JSON 本文放進分享資料；有些情況只會傳頁面標題與網址。純 GitHub Pages 無法因此繞過淡江 API 的跨來源限制讀取登入後內容。
+
+目前版本另外支援直接分享 `.json` / `.txt` 檔案。部署新版本後，建議移除舊版「淡江課表」PWA，再重新安裝一次，讓手機重新註冊 Share Target。

@@ -35,11 +35,22 @@
   "share_target": {
     "action": "/TKUTimeTable/share.html",
     "method": "POST",
-    "enctype": "application/x-www-form-urlencoded",
+    "enctype": "multipart/form-data",
     "params": {
       "title": "title",
       "text": "text",
-      "url": "url"
+      "url": "url",
+      "files": [
+        {
+          "name": "files",
+          "accept": [
+            "application/json",
+            ".json",
+            "text/plain",
+            ".txt"
+          ]
+        }
+      ]
     }
   }
 }

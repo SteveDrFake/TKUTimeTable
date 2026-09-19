@@ -40,7 +40,7 @@
 <script>
 (async () => {
   const BASE = "/TKUTimeTable/";
-  const SHARE_CACHE = "tku-timetable-share-v9";
+  const SHARE_CACHE = "tku-timetable-share-v10";
   const SHARE_KEY = BASE + "__share_inbox__";
   const PENDING_KEY = "tku_timetable_pending_shared_json_v1";
 
@@ -63,6 +63,39 @@
     if (!text) return null;
     const s = String(text).trim();
     try { return JSON.parse(s); } catch {}
+
+    // Some share UIs wrap selected content with a title/newline or other text.
+    // Try a plausible JSON array/object embedded in the shared text.
+    const starts = [];
+    const ai = s.indexOf("[");
+    const oi = s.indexOf("{");
+    if (ai >= 0) starts.push(ai);
+    if (oi >= 0) starts.push(oi);
+    starts.sort((a,b)=>a-b);
+
+    for (const start of starts) {
+      const open = s[start];
+      const close = open === "[" ? "]" : "}";
+      let depth = 0, inString = false, escape = false;
+      for (let i = start; i < s.length; i++) {
+        const ch = s[i];
+        if (inString) {
+          if (escape) escape = false;
+          else if (ch === "\") escape = true;
+          else if (ch === '"') inString = false;
+          continue;
+        }
+        if (ch === '"') { inString = true; continue; }
+        if (ch === open) depth++;
+        else if (ch === close) {
+          depth--;
+          if (depth === 0) {
+            try { return JSON.parse(s.slice(start, i + 1)); } catch {}
+            break;
+          }
+        }
+      }
+    }
     return null;
   }
 
@@ -118,9 +151,11 @@
       // Some browsers share only the URL/title. That is not enough to read
       // TKU's JSON because the browser same-origin policy still applies.
       status.textContent =
-        "已收到手機分享，但瀏覽器只傳來網址／標題，沒有傳出 JSON 內容。\\n\\n" +
-        "請在 TKU API 頁面先選取 JSON 文字後按「分享」，" +
-        "或將 JSON 儲存成 .json 檔後分享。";
+        "已收到手機分享，但這次瀏覽器只傳來網址／標題，沒有傳出 JSON 本文。
+
+" +
+        "純網頁無法從這個分享網址直接讀取你的淡江登入頁內容。請改用「選取 JSON 文字後分享」，" +
+        "或直接分享下載的 .json 檔。";
       status.className = "share-sub error";
 
       const shown = payload.text || payload.url || payload.title || "（沒有文字內容）";

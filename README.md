@@ -1,43 +1,27 @@
-# 淡江課表 GitHub Pages — Clean Rebuild v1
+# TKUTimeTable Clean v2 — TKU SSO callback test
 
-這個版本從零建立，不沿用先前 v8～v20 的 UI / JS。目標是先把前端資料模型、課表顯示、編輯、匯入、匯出與離線行為做穩定，再另外接後端。
+以 Clean v1 為基礎，不改課表資料模型與主要 UI，只增加 Worker 測試區塊。
 
-## GitHub Pages 部署
+## GitHub Pages
+把本資料夾中的以下檔案放到 GitHub repository 根目錄：
+- index.html
+- app.js
+- style.css
+- manifest.json
+- service-worker.js
 
-1. 把 `web/` 裡的檔案放到 repository 根目錄。
-2. GitHub → Settings → Pages。
-3. Build and deployment → Deploy from a branch。
-4. Branch 選 `main`，Folder 選 `/ (root)`。
-5. 儲存，等待 Pages 完成部署。
+## Cloudflare Worker
+把 `worker.js` 的完整內容貼到目前的 `tku-timetable-api` Worker，然後 Deploy。
 
-本專案只有靜態 HTML/CSS/JS，沒有 Node/PHP/Python 伺服器。
+## 測試
+網站 → 設定 → TKU 自動同步（測試）
+1. Worker URL 填 `https://tku-timetable-api.ccg38093.workers.dev`
+2. 按「測試後端」確認 Worker 正常。
+3. 按「使用 TKU SSO 登入測試」。
+4. 完成 TKU 登入後看「SSO 測試結果」。
 
-## 功能
+這個版本只會回傳「回呼參數名稱」，不回傳或保存帳號密碼、Cookie、Token。
 
-- 手機優先課表
-- 星期一～日開關；預設隱藏六、日
-- 第 1～14 節開關；預設顯示 1～10
-- 座號／教室／老師顯示開關
-- 課程詳細頁
-- 自訂課名
-- 我的備註
-- 我的記事
-- 多上課時段
-- 同一門課共用固定座號
-- 週次上一週／下一週／回本週
-- iLife JSON 匯入
-- 一般 courses JSON 匯入
-- JSON 檔案匯入／匯出
-- 範例課表
-- 本機 localStorage 儲存
-- Service Worker 離線快取
+TKU 官方 SSO 頁面目前明確要求瀏覽器接受 Cookies，並提供單一登入機制。參考：https://sso.tku.edu.tw/NEAI/loginrwd.jsp
 
-## TKU API 注意
-
-GitHub Pages 是靜態網站，不能執行伺服器端程式。瀏覽器從 GitHub Pages 直接 fetch 需要登入的 TKU API 時，會受到 TKU 端的 CORS 與登入 Cookie 限制。因此這個 v1 不會把「直接同步 TKU API」寫成看似成功但實際拿不到資料的假流程。
-
-真正自動同步需要另外的後端／Worker，且還要處理 TKU 的登入授權流程。這部分應與穩定的前端分開開發。
-
-## 本機資料
-
-課表與備註只保存在瀏覽器 localStorage。不要把帳號密碼、Cookie、Token 放進 GitHub repository。
+真正自動取得課表仍取決於 TKU 登入完成後是否把可用的授權結果交給應用程式；目前先用 Worker 確認官方 SSO 的實際回呼形式，不猜測 token。

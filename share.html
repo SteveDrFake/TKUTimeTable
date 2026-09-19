@@ -4,14 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#111827">
-  <title>匯入 TKU 課表</title>
-  <link rel="stylesheet" href="./style.css">
+  <title>淡江課表｜接收分享</title>
+  <link rel="manifest" href="/TKUTimeTable/manifest.json">
+  <link rel="stylesheet" href="/TKUTimeTable/style.css">
   <style>
     body{margin:0;background:#f3f4f6;color:#111827;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
     .share-page{max-width:720px;margin:0 auto;padding:24px 16px 48px}
     .share-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.05)}
     .share-title{font-size:22px;font-weight:800;margin-bottom:8px}
-    .share-sub{color:#6b7280;line-height:1.6;margin-bottom:18px}
+    .share-sub{color:#6b7280;line-height:1.6;margin-bottom:18px;white-space:pre-wrap}
     .share-box{background:#f8fafc;border-radius:12px;padding:12px;white-space:pre-wrap;word-break:break-word;max-height:280px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
     .share-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
     .share-actions button{border:0;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer}
@@ -19,6 +20,7 @@
     .secondary{background:#e5e7eb;color:#111827}
     .error{color:#b91c1c}
     .ok{color:#166534}
+    .debug{font-size:12px;color:#6b7280;margin-top:12px}
   </style>
 </head>
 <body>
@@ -27,60 +29,134 @@
       <div class="share-title">正在接收分享資料</div>
       <div id="status" class="share-sub">讀取中……</div>
       <div id="preview" class="share-box" hidden></div>
+      <div id="debug" class="debug"></div>
       <div class="share-actions">
         <button id="importBtn" class="primary" type="button" hidden>匯入課表</button>
         <button id="homeBtn" class="secondary" type="button">回到課表</button>
       </div>
     </section>
   </main>
+
 <script>
-(async()=>{
-  const status=document.getElementById("status");
-  const preview=document.getElementById("preview");
-  const importBtn=document.getElementById("importBtn");
-  const home=()=>location.href="./?shared=1";
-  document.getElementById("homeBtn").addEventListener("click",home);
-  try{
-    if(!navigator.serviceWorker?.controller){
-      status.textContent="這個分享功能需要先安裝並開啟本網站 App，請回課表後重新嘗試。";
-      status.className="share-sub error";
+(async () => {
+  const BASE = "/TKUTimeTable/";
+  const SHARE_CACHE = "tku-timetable-share-v8";
+  const SHARE_KEY = BASE + "__share_inbox__";
+  const PENDING_KEY = "tku_timetable_pending_shared_json_v1";
+
+  const status = document.getElementById("status");
+  const preview = document.getElementById("preview");
+  const debug = document.getElementById("debug");
+  const importBtn = document.getElementById("importBtn");
+
+  const home = () => {
+    location.href = BASE + "?shared=1";
+  };
+  document.getElementById("homeBtn").addEventListener("click", home);
+
+  function looksLikeJson(text) {
+    const s = String(text || "").trim();
+    return s.startsWith("[") || s.startsWith("{");
+  }
+
+  function tryParse(text) {
+    if (!text) return null;
+    const s = String(text).trim();
+    try { return JSON.parse(s); } catch {}
+    return null;
+  }
+
+  function rowsFromJson(v) {
+    if (Array.isArray(v)) return v;
+    if (v && typeof v === "object") {
+      for (const k of ["data","rows","items","result","courses","list"]) {
+        if (Array.isArray(v[k])) return v[k];
+      }
+    }
+    return null;
+  }
+
+  try {
+    const cache = await caches.open(SHARE_CACHE);
+    const response = await cache.match(new Request(SHARE_KEY));
+
+    if (!response) {
+      status.textContent =
+        "沒有找到剛分享的資料。\\n\\n" +
+        "如果你剛剛已經分享，請重新從 TKU API 頁面分享一次。";
+      status.className = "share-sub error";
+      debug.textContent = "接收快取中找不到資料。";
       return;
     }
-    const cache=await caches.open("tku-timetable-v6-share-inbox");
-    const response=await cache.match(new Request("__share_inbox__"));
-    if(!response){
-      status.textContent="沒有找到剛分享的資料。";
-      status.className="share-sub error";
+
+    const payload = await response.json();
+
+    // Remove the inbox item only after reading it successfully.
+    await cache.delete(new Request(SHARE_KEY));
+
+    const candidates = [];
+    if (typeof payload.text === "string" && payload.text.trim()) {
+      candidates.push({type:"文字", value:payload.text});
+    }
+    if (payload.file && typeof payload.file.text === "string" && payload.file.text.trim()) {
+      candidates.push({type:"檔案", value:payload.file.text});
+    }
+
+    let parsed = null;
+    let sourceType = "";
+
+    for (const c of candidates) {
+      const p = tryParse(c.value);
+      if (p !== null) {
+        parsed = p;
+        sourceType = c.type;
+        break;
+      }
+    }
+
+    if (parsed === null) {
+      // Some browsers share only the URL/title. That is not enough to read
+      // TKU's JSON because the browser same-origin policy still applies.
+      status.textContent =
+        "已收到手機分享，但瀏覽器只傳來網址／標題，沒有傳出 JSON 內容。\\n\\n" +
+        "請在 TKU API 頁面先選取 JSON 文字後按「分享」，" +
+        "或將 JSON 儲存成 .json 檔後分享。";
+      status.className = "share-sub error";
+
+      const shown = payload.text || payload.url || payload.title || "（沒有文字內容）";
+      preview.hidden = false;
+      preview.textContent = String(shown).slice(0, 5000);
+      debug.textContent = `收到欄位：text=${!!payload.text}，file=${!!payload.file}，url=${!!payload.url}`;
       return;
     }
-    const payload=await response.json();
-    await cache.delete(new Request("__share_inbox__"));
-    const candidates=[];
-    if(payload.text) candidates.push(payload.text);
-    if(payload.file?.text) candidates.push(payload.file.text);
-    let parsed=null;
-    let raw="";
-    for(const candidate of candidates){
-      raw=candidate.trim();
-      try{parsed=JSON.parse(raw);break}catch{}
-    }
-    if(!parsed){
-      status.textContent="已收到分享資料，但內容不是可解析的 JSON。請在 TKU API 頁面分享／傳送 JSON 文字或 .json 檔案。";
-      status.className="share-sub error";
-      preview.hidden=false;
-      preview.textContent=(payload.text||payload.url||payload.file?.name||"（沒有文字內容）").slice(0,5000);
+
+    const rows = rowsFromJson(parsed);
+    if (!rows || !rows.length) {
+      status.textContent = "已收到 JSON，但裡面找不到 TKU iLife 課表資料陣列。";
+      status.className = "share-sub error";
+      preview.hidden = false;
+      preview.textContent = JSON.stringify(parsed, null, 2).slice(0, 5000);
       return;
     }
-    localStorage.setItem("tku_timetable_pending_shared_json_v1",JSON.stringify(parsed));
-    status.textContent="已收到 JSON，返回課表後會自動解析。";
-    status.className="share-sub ok";
-    preview.hidden=false;
-    preview.textContent=JSON.stringify(parsed,null,2).slice(0,5000);
-    importBtn.hidden=false;
-    importBtn.addEventListener("click",home);
-  }catch(e){
-    status.textContent="接收失敗："+(e?.message||e);
-    status.className="share-sub error";
+
+    // Store the raw JSON so the main page can parse it with its canonical
+    // TKU iLife parser.
+    localStorage.setItem(PENDING_KEY, JSON.stringify(parsed));
+
+    status.textContent =
+      `已收到 ${rows.length} 筆 TKU iLife JSON 資料。\\n` +
+      "按「匯入課表」後會自動回到課表。";
+    status.className = "share-sub ok";
+
+    preview.hidden = false;
+    preview.textContent = JSON.stringify(parsed, null, 2).slice(0, 5000);
+    debug.textContent = `來源：${sourceType}`;
+
+    importBtn.hidden = false;
+    importBtn.addEventListener("click", home);
+  } catch (e) {
+    status.textContent = "接收失敗：" + (e?.message || e);
+    status.className = "share-sub error";
   }
 })();
 </script>

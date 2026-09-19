@@ -339,7 +339,7 @@ function bindEvents(){
   window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredInstallPrompt=e});
 }
 
-function registerPwa(){if("serviceWorker" in navigator && location.protocol.startsWith("http")){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js?v=1").catch(()=>{}))}}
+function registerPwa(){if("serviceWorker" in navigator && location.protocol.startsWith("http")){window.addEventListener("load",()=>navigator.serviceWorker.register("/TKUTimeTable/service-worker.js?v=9").catch(()=>{}))}}
 function boot(){try{bindEvents();consumeCaptureInbox();consumePendingSharedJson();renderAll();registerPwa()}catch(e){console.error(e);toast(`初始化失敗：${e.message}`)}}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();
 })();

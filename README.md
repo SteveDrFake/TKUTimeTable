@@ -21,5 +21,5 @@ Web Share Target 是瀏覽器支援度有限的功能，而且 PWA 必須先安�
 Added 192x192 and 512x512 PWA icons and an in-page install button for supported browsers.
 
 
-## v8 PWA install fix
-Explicit project-site start_url/scope, manifest id, icons, and corrected Service Worker paths.
+## v9 share fix
+Fixed the Share Target inbox cache-key mismatch. The Service Worker and share.html now use the same absolute inbox key.

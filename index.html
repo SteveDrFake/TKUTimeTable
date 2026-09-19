@@ -107,15 +107,18 @@
         </section>
 
         <section class="settings-section">
-          <div class="section-title-row"><h2>TKU 自動同步（測試）</h2></div>
-          <p class="hint">這裡先測試「淡江 SSO → Cloudflare Worker → 回傳」流程。網站不會要求你輸入或提供密碼、Cookie、Token。</p>
-          <label class="field"><span>Cloudflare Worker 網址</span><input id="backendUrlInput" type="url" placeholder="https://xxxx.workers.dev"></label>
-          <div class="two-col">
-            <button id="saveBackendButton" class="full-btn" type="button">儲存後端網址</button>
-            <button id="testBackendButton" class="full-btn" type="button">測試後端</button>
+          <div class="section-title-row"><h2>從淡江課表頁抓取</h2></div>
+          <div class="notice-box">
+            <strong>不經過 GitHub → TKU 的 CORS。</strong> 會在淡江課表頁面本身讀取資料，再送回本網站。
           </div>
-          <button id="tkuLoginTestButton" class="full-btn primary" type="button">🔐 使用 TKU SSO 登入測試</button>
-          <div id="authTestStatus" class="diagnostic-box">尚未測試 TKU SSO 回傳流程。</div>
+          <label class="field"><span>淡江課表網址</span><input id="tkuCourseUrlInput" type="url" value="https://sso.tku.edu.tw/aissinfo/emis/TMWC020.aspx" autocomplete="off"></label>
+          <div class="two-col">
+            <button id="openTkuCoursePageButton" class="full-btn primary" type="button">📚 開啟淡江課表</button>
+            <button id="copyTkuBookmarkletButton" class="full-btn" type="button">📋 複製「抓取淡江課表」書籤</button>
+          </div>
+          <button id="testCaptureMessageButton" class="full-btn" type="button">🧪 測試資料接收</button>
+          <div id="captureStatus" class="diagnostic-box">尚未接收淡江課表資料。</div>
+          <p class="hint">第一次使用：先按「複製書籤」，在瀏覽器建立一個書籤；之後在淡江課表頁登入並打開課表，再點這個書籤即可把資料送回本網站。</p>
         </section>
 
         <section class="settings-section">
@@ -198,6 +201,6 @@
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <input id="installProbe" type="hidden">
-  <script src="./app.js" defer></script>
+  <script src="./app.js?v=2" defer></script>
 </body>
 </html>

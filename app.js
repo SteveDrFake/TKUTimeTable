@@ -3,7 +3,7 @@
 
 const STORAGE_KEY = "tku_timetable_rebuild_v1";
 const CAPTURE_INBOX_KEY = "tku_timetable_capture_inbox_v1";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const DAYS = [
   {key:1,name:"一"},{key:2,name:"二"},{key:3,name:"三"},{key:4,name:"四"},{key:5,name:"五"},{key:6,name:"六"},{key:7,name:"日"}
 ];
@@ -17,7 +17,8 @@ const DEFAULT_STATE = {
     periods: Object.fromEntries(PERIODS.map(p=>[p.number,p.number<=10])),
     showSeat: true,
     showRoom: true,
-    showTeacher: true
+    showTeacher: true,
+    theme: "light"
   },
   courses: [],
   importedAt: "",
@@ -37,6 +38,27 @@ function trim(v){return String(v ?? "").trim()}
 function fmtDateTime(value){if(!value) return "—"; const d=new Date(value); if(Number.isNaN(d.getTime())) return String(value); return d.toLocaleString("zh-TW",{hour12:false})}
 function toast(message,kind=""){const box=el("toast");box.textContent=message;box.className=`toast ${kind?kind:""}`;box.classList.remove("hidden");clearTimeout(toast._t);toast._t=setTimeout(()=>box.classList.add("hidden"),3200)}
 
+function applyTheme(){
+  const theme=state.display.theme === "dark" ? "dark" : "light";
+  document.documentElement.dataset.theme=theme;
+  document.documentElement.style.colorScheme=theme;
+  const meta=document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.content=theme === "dark" ? "#0b1220" : "#111827";
+  const button=el("themeButton");
+  if(button){
+    button.textContent=theme === "dark" ? "☀️" : "🌙";
+    button.title=theme === "dark" ? "切換淺色模式" : "切換深色模式";
+    button.setAttribute("aria-label",button.title);
+  }
+  const input=el("themeInput");
+  if(input) input.value=theme;
+}
+function toggleTheme(){
+  state.display.theme=state.display.theme === "dark" ? "light" : "dark";
+  saveState();
+  applyTheme();
+}
+
 function normalizeState(raw){
   const x = raw && typeof raw === "object" ? raw : {};
   const s = clone(DEFAULT_STATE);
@@ -47,6 +69,7 @@ function normalizeState(raw){
   s.display.showSeat = x.display?.showSeat !== false;
   s.display.showRoom = x.display?.showRoom !== false;
   s.display.showTeacher = x.display?.showTeacher !== false;
+  s.display.theme = x.display?.theme === "dark" ? "dark" : "light";
   s.courses = Array.isArray(x.courses) ? x.courses.map(normalizeCourse).filter(Boolean) : [];
   s.importedAt = x.importedAt || "";
   s.source = x.source || "";
@@ -364,22 +387,74 @@ function testCaptureMessage(){
   ]});
 }
 
-function renderAll(){renderHeader();renderSchedule();}
+function renderAll(){applyTheme();renderHeader();renderSchedule();}
 function showInstallHelp(){alert("手機安裝：在手機瀏覽器開啟本網站，使用瀏覽器的「加入主畫面／安裝 App」功能。此網站的資料會保存在你的裝置本機。")}
 
 function bindEvents(){
-  el("settingsButton").addEventListener("click",openSettings);el("syncButton").addEventListener("click",syncAction);el("prevWeek").addEventListener("click",()=>{currentWeekOffset--;renderHeader();renderSchedule()});el("nextWeek").addEventListener("click",()=>{currentWeekOffset++;renderHeader();renderSchedule()});el("weekTitleButton").addEventListener("click",()=>{currentWeekOffset=0;renderHeader();renderSchedule()});
-  el("saveProfileButton").addEventListener("click",saveProfile);el("weekdaysAllButton").addEventListener("click",quickDays);el("periodsDayButton").addEventListener("click",periodsDay);el("periodsAllButton").addEventListener("click",periodsAll);
-  el("showSeatInput").addEventListener("change",e=>{state.display.showSeat=e.target.checked;saveState();renderSchedule()});el("showRoomInput").addEventListener("change",e=>{state.display.showRoom=e.target.checked;saveState();renderSchedule()});el("showTeacherInput").addEventListener("change",e=>{state.display.showTeacher=e.target.checked;saveState();renderSchedule()});
-  el("openImportButton").addEventListener("click",()=>{el("apiJsonInput").value="";el("importPreview").textContent="等待匯入。";pendingImport=null;openSheet("importSheet")});el("clipboardImportButton").addEventListener("click",readClipboardAndImport);el("readClipboardButton").addEventListener("click",readClipboardAndImport);el("previewImportButton").addEventListener("click",previewImport);el("commitImportButton").addEventListener("click",commitImport);
-  el("openTkuCoursePageButton").addEventListener("click",openTkuCoursePage);el("openBookmarkletToolButton").addEventListener("click",openBookmarkletTool);el("copyTkuBookmarkletButton").addEventListener("click",copyTkuBookmarklet);el("testCaptureMessageButton").addEventListener("click",testCaptureMessage);window.addEventListener("message",handleTkuCaptureMessage);
-  el("loadDemoButton").addEventListener("click",()=>{state.courses=sampleState();state.semester=state.semester||"範例學期";state.importedAt=new Date().toISOString();state.source="內建範例";saveState();fillSettings();renderAll();toast("已載入範例課表")});el("exportButton").addEventListener("click",exportData);el("jsonFileInput").addEventListener("change",e=>{const f=e.target.files?.[0];if(f)importFile(f);e.target.value=""});el("clearCoursesButton").addEventListener("click",clearCourses);el("resetAppButton").addEventListener("click",resetApp);
-  el("cancelCourseButton").addEventListener("click",closeSheets);el("saveCourseButton").addEventListener("click",saveCurrentCourse);el("deleteCourseButton").addEventListener("click",deleteCurrentCourse);el("addJournalButton").addEventListener("click",addJournal);el("installHelpButton").addEventListener("click",showInstallHelp);
-  el("overlay").addEventListener("click",e=>{if(e.target===el("overlay"))closeSheets()});document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",closeSheets));window.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheets()});window.addEventListener("online",renderHeader);window.addEventListener("offline",renderHeader);
-  window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredInstallPrompt=e});
+  const on=(id,event,handler)=>{
+    const target=el(id);
+    if(!target){console.warn(`[bindEvents] 找不到 #${id}，略過事件綁定`);return null}
+    target.addEventListener(event,handler);
+    return target;
+  };
+
+  on("settingsButton","click",openSettings);
+  on("themeButton","click",toggleTheme);
+  on("syncButton","click",syncAction);
+  on("prevWeek","click",()=>{currentWeekOffset--;renderHeader();renderSchedule()});
+  on("nextWeek","click",()=>{currentWeekOffset++;renderHeader();renderSchedule()});
+  on("weekTitleButton","click",()=>{currentWeekOffset=0;renderHeader();renderSchedule()});
+
+  on("saveProfileButton","click",saveProfile);
+  on("weekdaysAllButton","click",quickDays);
+  on("periodsDayButton","click",periodsDay);
+  on("periodsAllButton","click",periodsAll);
+  on("showSeatInput","change",e=>{state.display.showSeat=e.target.checked;saveState();renderSchedule()});
+  on("showRoomInput","change",e=>{state.display.showRoom=e.target.checked;saveState();renderSchedule()});
+  on("showTeacherInput","change",e=>{state.display.showTeacher=e.target.checked;saveState();renderSchedule()});
+  on("themeInput","change",e=>{state.display.theme=e.target.value === "dark" ? "dark" : "light";saveState();applyTheme()});
+
+  on("openImportButton","click",()=>{el("apiJsonInput").value="";el("importPreview").textContent="等待匯入。";pendingImport=null;openSheet("importSheet")});
+  on("clipboardImportButton","click",readClipboardAndImport);
+  on("previewImportButton","click",previewImport);
+  on("commitImportButton","click",commitImport);
+
+  on("openTkuCoursePageButton","click",openTkuCoursePage);
+  on("openBookmarkletToolButton","click",openBookmarkletTool);
+  on("copyTkuBookmarkletButton","click",copyTkuBookmarklet);
+  on("testCaptureMessageButton","click",testCaptureMessage);
+
+  on("loadDemoButton","click",()=>{state.courses=sampleState();state.semester=state.semester||"範例學期";state.importedAt=new Date().toISOString();state.source="內建範例";saveState();fillSettings();renderAll();toast("已載入範例課表")});
+  on("exportButton","click",exportData);
+  on("jsonFileInput","change",e=>{const f=e.target.files?.[0];if(f)importFile(f);e.target.value=""});
+  on("clearCoursesButton","click",clearCourses);
+  on("resetAppButton","click",resetApp);
+
+  on("cancelCourseButton","click",closeSheets);
+  on("saveCourseButton","click",saveCurrentCourse);
+  on("deleteCourseButton","click",deleteCurrentCourse);
+  on("addJournalButton","click",addJournal);
+  on("installHelpButton","click",showInstallHelp);
+  on("installAppButton","click",async()=>{
+    if(!deferredInstallPrompt){toast("目前瀏覽器沒有可用的安裝提示。","error");return}
+    deferredInstallPrompt.prompt();
+    try{await deferredInstallPrompt.userChoice}catch{}
+    deferredInstallPrompt=null;
+    const button=el("installAppButton");
+    if(button) button.hidden=true;
+  });
+
+  on("overlay","click",e=>{if(e.target===el("overlay"))closeSheets()});
+  document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",closeSheets));
+  window.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheets()});
+  window.addEventListener("online",renderHeader);
+  window.addEventListener("offline",renderHeader);
+  window.addEventListener("message",handleTkuCaptureMessage);
+  window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredInstallPrompt=e;const button=el("installAppButton");if(button)button.hidden=false});
 }
 
-function registerPwa(){if("serviceWorker" in navigator && location.protocol.startsWith("http")){window.addEventListener("load",()=>navigator.serviceWorker.register("/TKUTimeTable/service-worker.js?v=16").catch(()=>{}))}}
-function boot(){try{bindEvents();consumeCaptureInbox();consumePendingSharedJson();renderAll();registerPwa()}catch(e){console.error(e);toast(`初始化失敗：${e.message}`)}}
+
+function registerPwa(){if("serviceWorker" in navigator && location.protocol.startsWith("http")){window.addEventListener("load",()=>navigator.serviceWorker.register("/TKUTimeTable/service-worker.js?v=17").catch(()=>{}))}}
+function boot(){try{bindEvents();consumeCaptureInbox();consumePendingSharedJson();renderAll();fillSettings();registerPwa()}catch(e){console.error(e);toast(`初始化失敗：${e.message}`)}}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();
 })();

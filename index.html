@@ -21,6 +21,7 @@
       </div>
       <div class="top-actions">
         <button id="syncButton" class="top-btn primary" type="button">同步</button>
+        <button id="themeButton" class="top-btn icon-btn" type="button" aria-label="切換深色模式" title="切換深色模式">🌙</button>
         <button id="settingsButton" class="top-btn" type="button">設定</button>
       </div>
     </header>
@@ -86,6 +87,14 @@
         <section class="settings-section">
           <div class="section-title-row"><h2>顯示節次</h2><div class="inline-actions"><button id="periodsDayButton" class="mini-btn" type="button">日間 1–10</button><button id="periodsAllButton" class="mini-btn" type="button">全部</button></div></div>
           <div id="periodChecks" class="toggle-grid periods"></div>
+        </section>
+
+        <section class="settings-section">
+          <div class="section-title-row"><h2>外觀</h2></div>
+          <label class="field"><span>色彩模式</span><select id="themeInput">
+            <option value="light">淺色模式</option>
+            <option value="dark">深色模式</option>
+          </select></label>
         </section>
 
         <section class="settings-section">
@@ -211,6 +220,6 @@
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <input id="installProbe" type="hidden">
-  <script src="./app.js?v=16" defer></script>
+  <script src="./app.js?v=17" defer></script>
 </body>
 </html>

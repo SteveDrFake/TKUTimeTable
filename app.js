@@ -176,14 +176,14 @@ function commitImport(){const result=pendingImport || previewImport();if(!result
 function sampleState(){
   const make=(id,name,seat,day,periods,teacher,room)=>({id,name,customName:"",department:"範例",grade:"",className:"",credits:"3",seatNumber:String(seat),description:"範例課程資料",pdf:"",note:"",journal:[],times:[{day,periods,teacher,room,startTimes:[]}]});
   return [
-    make("demo-1","高等微積分","033",1,[1,2],"余成義","S 420"),
-    make("demo-2","英文（二）","004",5,[8,9],"羅老師","S 101"),
-    make("demo-3","機率論","044",4,[5,6],"黃老師","C 013"),
-    make("demo-4","科學論文導讀（二）","002",4,[3,4],"穆老師","Q 305"),
-    make("demo-5","代數學（一）","040",2,[8,9],"王老師","S 420"),
-    { ...make("demo-6","代數學（一）","040",5,[3],"王老師","S 420"), times:[{day:5,periods:[3],teacher:"王老師",room:"S 420",startTimes:[]},{day:5,periods:[7],teacher:"助教",room:"S 420",startTimes:[]}]},
-    make("demo-7","微分方程（一）","032",2,[3,4],"謝老師","S 420"),
-    make("demo-8","男、女生體育－羽球興趣班","020",1,[7,8],"蔡老師","")
+    make("demo-1","微積分","096",1,[1,2],"何教授","B 004"),
+    make("demo-2","線性代數","088",5,[8,9],"王教授","B 003"),
+    make("demo-3","程式語言","100",4,[5,6],"楊教授","B 002"),
+    make("demo-4","基礎數學","090",4,[3,4],"鄭教授","C 002"),
+    make("demo-5","統計入門","096",2,[8,9],"黃教授","C 002"),
+    make("demo-6","人工智慧導論","098",5,[3],"翁老師","B 001"),
+    make("demo-7","英文（一）","077",2,[3,4],"羅老師","B 002"),
+    make("demo-8","男、女生體育","094",1,[7,8],"胡教練","B 001")
   ].map(normalizeCourse);
 }
 

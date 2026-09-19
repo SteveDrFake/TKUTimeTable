@@ -23,3 +23,7 @@ Added 192x192 and 512x512 PWA icons and an in-page install button for supported 
 
 ## v9 share fix
 Fixed the Share Target inbox cache-key mismatch. The Service Worker and share.html now use the same absolute inbox key.
+
+
+## v10 share final
+Aligned share.html cache name with the Service Worker (`tku-timetable-share-v9`) and fixed literal `\\n` display in status messages.

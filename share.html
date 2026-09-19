@@ -40,7 +40,7 @@
 <script>
 (async () => {
   const BASE = "/TKUTimeTable/";
-  const SHARE_CACHE = "tku-timetable-share-v8";
+  const SHARE_CACHE = "tku-timetable-share-v9";
   const SHARE_KEY = BASE + "__share_inbox__";
   const PENDING_KEY = "tku_timetable_pending_shared_json_v1";
 
@@ -82,7 +82,7 @@
 
     if (!response) {
       status.textContent =
-        "沒有找到剛分享的資料。\\n\\n" +
+        "沒有找到剛分享的資料。\n\n" +
         "如果你剛剛已經分享，請重新從 TKU API 頁面分享一次。";
       status.className = "share-sub error";
       debug.textContent = "接收快取中找不到資料。";
@@ -144,7 +144,7 @@
     localStorage.setItem(PENDING_KEY, JSON.stringify(parsed));
 
     status.textContent =
-      `已收到 ${rows.length} 筆 TKU iLife JSON 資料。\\n` +
+      `已收到 ${rows.length} 筆 TKU iLife JSON 資料。\n` +
       "按「匯入課表」後會自動回到課表。";
     status.className = "share-sub ok";
 

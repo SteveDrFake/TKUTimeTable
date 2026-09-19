@@ -1,29 +1,39 @@
 {
+  "id": "/TKUTimeTable/",
   "name": "淡江課表",
   "short_name": "淡江課表",
-  "start_url": "./index.html",
-  "scope": "./",
+  "description": "淡江大學學生課表",
+  "lang": "zh-TW",
+  "start_url": "/TKUTimeTable/",
+  "scope": "/TKUTimeTable/",
   "display": "standalone",
+  "display_override": [
+    "standalone"
+  ],
   "background_color": "#f3f4f6",
   "theme_color": "#111827",
-  "lang": "zh-TW",
-  "description": "淡江大學學生課表網站",
   "icons": [
     {
-      "src": "./icons/icon-192.png",
+      "src": "/TKUTimeTable/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "./icons/icon-512.png",
+      "src": "/TKUTimeTable/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/TKUTimeTable/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "share_target": {
-    "action": "./share.html",
+    "action": "/TKUTimeTable/share.html",
     "method": "POST",
     "enctype": "application/x-www-form-urlencoded",
     "params": {

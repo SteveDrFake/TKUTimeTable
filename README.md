@@ -19,3 +19,7 @@ Web Share Target 是瀏覽器支援度有限的功能，而且 PWA 必須先安�
 
 ## v7 install fix
 Added 192x192 and 512x512 PWA icons and an in-page install button for supported browsers.
+
+
+## v8 PWA install fix
+Explicit project-site start_url/scope, manifest id, icons, and corrected Service Worker paths.

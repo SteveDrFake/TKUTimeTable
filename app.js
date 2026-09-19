@@ -27,6 +27,8 @@ let currentWeekOffset = 0;
 let currentCourseId = null;
 let pendingImport = null;
 let deferredInstallPrompt = null;
+const BACKEND_KEY = "tku_timetable_backend_v2";
+const DEFAULT_BACKEND = "https://tku-timetable-api.ccg38093.workers.dev";
 
 function el(id){return document.getElementById(id)}
 function clone(v){return JSON.parse(JSON.stringify(v))}
@@ -131,6 +133,7 @@ function fillSettings(){
   const dayBox=el("dayChecks");dayBox.innerHTML="";for(const d of DAYS){const label=document.createElement("label");label.className="toggle-item";label.innerHTML=`<span>星期${d.name}</span><input type="checkbox" ${state.display.days[d.key]?"checked":""}>`;label.querySelector("input").addEventListener("change",e=>{state.display.days[d.key]=e.target.checked;saveState();renderSchedule()});dayBox.appendChild(label)}
   const periodBox=el("periodChecks");periodBox.innerHTML="";for(const p of PERIODS){const label=document.createElement("label");label.className="toggle-item";label.innerHTML=`<span>${periodLabel(p.number)}</span><input type="checkbox" ${state.display.periods[p.number]?"checked":""}>`;label.querySelector("input").addEventListener("change",e=>{state.display.periods[p.number]=e.target.checked;saveState();renderSchedule()});periodBox.appendChild(label)}
   el("showSeatInput").checked=state.display.showSeat;el("showRoomInput").checked=state.display.showRoom;el("showTeacherInput").checked=state.display.showTeacher;
+  const backendField=el("backendUrlInput"); if(backendField) backendField.value=getBackendUrl();
   el("courseCountStat").textContent=String(state.courses.length);el("timeCountStat").textContent=String(state.courses.reduce((n,c)=>n+c.times.length,0));el("importedAtStat").textContent=fmtDateTime(state.importedAt);el("diagnosticMessage").textContent=state.courses.length?`資料來源：${state.source||"本機"}
 資料狀態正常，可以離線使用。`:"尚未匯入資料。";
 }
@@ -201,7 +204,13 @@ function periodsDay(){for(const p of PERIODS)state.display.periods[p.number]=p.n
 function periodsAll(){for(const p of PERIODS)state.display.periods[p.number]=true;saveState();fillSettings();renderSchedule()}
 function clearCourses(){if(!confirm("確定清除課表嗎？學生資料與顯示設定會保留。"))return;state.courses=[];state.importedAt="";state.source="";saveState();fillSettings();renderAll();toast("課表已清除")}
 function resetApp(){if(!confirm("確定清除這個網站保存的全部資料嗎？"))return;localStorage.removeItem(STORAGE_KEY);state=normalizeState({});saveState();fillSettings();closeSheets();renderAll();toast("已清除本網站資料")}
-function syncAction(){openSettings();toast("目前 GitHub Pages 版本不會直接跨來源抓 TKU API；請使用『匯入 TKU 課表資料』。")}
+function getBackendUrl(){return String(localStorage.getItem(BACKEND_KEY)||DEFAULT_BACKEND).trim().replace(/\/$/,"")}
+function saveBackendUrl(){const v=String(el("backendUrlInput").value||"").trim().replace(/\/$/,"");if(!/^https:\/\//i.test(v)){toast("後端網址必須是 https://");return}localStorage.setItem(BACKEND_KEY,v);toast("後端網址已儲存")}
+async function testBackend(){const base=getBackendUrl();el("authTestStatus").textContent="正在測試 Worker…";try{const r=await fetch(`${base}/health`,{headers:{Accept:"application/json"}});const t=await r.text();el("authTestStatus").textContent=`Worker HTTP ${r.status}\n${t.slice(0,1200)}`;toast(r.ok?"Worker 連線正常":"Worker 回應異常")}catch(e){el("authTestStatus").textContent=`Worker 連線失敗\n${e.message}`;toast(`Worker 連線失敗：${e.message}`)}}
+function startTkuLoginTest(){const base=getBackendUrl();location.href=`${base}/auth/start?return=${encodeURIComponent(location.origin+location.pathname)}`}
+function showAuthStatus(){const box=el("authTestStatus");if(box)box.textContent="目前尚未取得 TKU SSO 回呼。"}
+function handleAuthTestReturn(){const p=new URLSearchParams(location.search);if(p.get("tku_auth_test")!=="1")return;const keys=(p.get("keys")||"").split(",").filter(Boolean);const status=p.get("status")||"unknown";const box=el("authTestStatus");if(box)box.textContent=`SSO 測試結果\n狀態：${status}\n回傳參數名稱：${keys.length?keys.join("、"):"無"}`;history.replaceState({},document.title,location.pathname+location.hash);openSettings()}
+function syncAction(){startTkuLoginTest()}
 function renderAll(){renderHeader();renderSchedule();}
 function showInstallHelp(){alert("手機安裝：在手機瀏覽器開啟本網站，使用瀏覽器的「加入主畫面／安裝 App」功能。此網站的資料會保存在你的裝置本機。")}
 
@@ -210,6 +219,7 @@ function bindEvents(){
   el("saveProfileButton").addEventListener("click",saveProfile);el("weekdaysAllButton").addEventListener("click",quickDays);el("periodsDayButton").addEventListener("click",periodsDay);el("periodsAllButton").addEventListener("click",periodsAll);
   el("showSeatInput").addEventListener("change",e=>{state.display.showSeat=e.target.checked;saveState();renderSchedule()});el("showRoomInput").addEventListener("change",e=>{state.display.showRoom=e.target.checked;saveState();renderSchedule()});el("showTeacherInput").addEventListener("change",e=>{state.display.showTeacher=e.target.checked;saveState();renderSchedule()});
   el("openImportButton").addEventListener("click",()=>{el("apiJsonInput").value="";el("importPreview").textContent="等待匯入。";pendingImport=null;openSheet("importSheet")});el("previewImportButton").addEventListener("click",previewImport);el("commitImportButton").addEventListener("click",commitImport);
+  el("saveBackendButton").addEventListener("click",saveBackendUrl);el("testBackendButton").addEventListener("click",testBackend);el("tkuLoginTestButton").addEventListener("click",startTkuLoginTest);
   el("loadDemoButton").addEventListener("click",()=>{state.courses=sampleState();state.semester=state.semester||"範例學期";state.importedAt=new Date().toISOString();state.source="內建範例";saveState();fillSettings();renderAll();toast("已載入範例課表")});el("exportButton").addEventListener("click",exportData);el("jsonFileInput").addEventListener("change",e=>{const f=e.target.files?.[0];if(f)importFile(f);e.target.value=""});el("clearCoursesButton").addEventListener("click",clearCourses);el("resetAppButton").addEventListener("click",resetApp);
   el("cancelCourseButton").addEventListener("click",closeSheets);el("saveCourseButton").addEventListener("click",saveCurrentCourse);el("deleteCourseButton").addEventListener("click",deleteCurrentCourse);el("addJournalButton").addEventListener("click",addJournal);el("installHelpButton").addEventListener("click",showInstallHelp);
   el("overlay").addEventListener("click",e=>{if(e.target===el("overlay"))closeSheets()});document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",closeSheets));window.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheets()});window.addEventListener("online",renderHeader);window.addEventListener("offline",renderHeader);
@@ -217,6 +227,6 @@ function bindEvents(){
 }
 
 function registerPwa(){if("serviceWorker" in navigator && location.protocol.startsWith("http")){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js?v=1").catch(()=>{}))}}
-function boot(){try{bindEvents();renderAll();registerPwa()}catch(e){console.error(e);toast(`初始化失敗：${e.message}`)}}
+function boot(){try{bindEvents();renderAll();handleAuthTestReturn();registerPwa()}catch(e){console.error(e);toast(`初始化失敗：${e.message}`)}}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();
 })();

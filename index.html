@@ -107,6 +107,18 @@
         </section>
 
         <section class="settings-section">
+          <div class="section-title-row"><h2>TKU 自動同步（測試）</h2></div>
+          <p class="hint">這裡先測試「淡江 SSO → Cloudflare Worker → 回傳」流程。網站不會要求你輸入或提供密碼、Cookie、Token。</p>
+          <label class="field"><span>Cloudflare Worker 網址</span><input id="backendUrlInput" type="url" placeholder="https://xxxx.workers.dev"></label>
+          <div class="two-col">
+            <button id="saveBackendButton" class="full-btn" type="button">儲存後端網址</button>
+            <button id="testBackendButton" class="full-btn" type="button">測試後端</button>
+          </div>
+          <button id="tkuLoginTestButton" class="full-btn primary" type="button">🔐 使用 TKU SSO 登入測試</button>
+          <div id="authTestStatus" class="diagnostic-box">尚未測試 TKU SSO 回傳流程。</div>
+        </section>
+
+        <section class="settings-section">
           <div class="section-title-row"><h2>資料狀態</h2></div>
           <div class="diagnostic-grid">
             <div><span>課程數</span><strong id="courseCountStat">0</strong></div>

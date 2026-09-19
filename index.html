@@ -99,6 +99,7 @@
           <div class="section-title-row"><h2>課表資料</h2></div>
           <p class="hint">這個版本先專注在穩定的 GitHub Pages 前端。你可以貼上 TKU iLife API 的 JSON，網站會在本機解析與保存。GitHub Pages 本身不能執行後端，也不能直接繞過 TKU API 的 CORS。</p>
           <button id="openImportButton" class="full-btn primary" type="button">📥 匯入 TKU 課表資料</button>
+          <button id="clipboardImportButton" class="full-btn primary" type="button">📋 從剪貼簿讀取 TKU JSON</button>
           <button id="loadDemoButton" class="full-btn" type="button">載入範例課表</button>
           <button id="exportButton" class="full-btn" type="button">匯出本機資料 JSON</button>
           <label class="full-btn file-btn">從 JSON 檔案匯入<input id="jsonFileInput" type="file" accept="application/json,.json"></label>
@@ -210,6 +211,6 @@
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <input id="installProbe" type="hidden">
-  <script src="./app.js?v=13" defer></script>
+  <script src="./app.js?v=16" defer></script>
 </body>
 </html>

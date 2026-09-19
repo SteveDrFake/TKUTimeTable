@@ -40,7 +40,7 @@
 <script>
 (async () => {
   const BASE = "/TKUTimeTable/";
-  const SHARE_CACHE = "tku-timetable-share-v10";
+  const SHARE_CACHE = "tku-timetable-share-v12";
   const SHARE_KEY = BASE + "__share_inbox__";
   const PENDING_KEY = "tku_timetable_pending_shared_json_v1";
 
@@ -81,7 +81,7 @@
         const ch = s[i];
         if (inString) {
           if (escape) escape = false;
-          else if (ch === "\") escape = true;
+          else if (ch === "\\") escape = true;
           else if (ch === '"') inString = false;
           continue;
         }
@@ -151,9 +151,7 @@
       // Some browsers share only the URL/title. That is not enough to read
       // TKU's JSON because the browser same-origin policy still applies.
       status.textContent =
-        "已收到手機分享，但這次瀏覽器只傳來網址／標題，沒有傳出 JSON 本文。
-
-" +
+        "已收到手機分享，但這次瀏覽器只傳來網址／標題，沒有傳出 JSON 本文。\n\n" +
         "純網頁無法從這個分享網址直接讀取你的淡江登入頁內容。請改用「選取 JSON 文字後分享」，" +
         "或直接分享下載的 .json 檔。";
       status.className = "share-sub error";
@@ -180,7 +178,7 @@
 
     status.textContent =
       `已收到 ${rows.length} 筆 TKU iLife JSON 資料。\n` +
-      "按「匯入課表」後會自動回到課表。";
+      "正在匯入課表……";
     status.className = "share-sub ok";
 
     preview.hidden = false;
@@ -188,7 +186,9 @@
     debug.textContent = `來源：${sourceType}`;
 
     importBtn.hidden = false;
+    importBtn.textContent = "立即匯入課表";
     importBtn.addEventListener("click", home);
+    setTimeout(home, 700);
   } catch (e) {
     status.textContent = "接收失敗：" + (e?.message || e);
     status.className = "share-sub error";

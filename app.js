@@ -204,7 +204,9 @@ function clearCourses(){if(!confirm("確定清除課表嗎？學生資料與顯�
 function resetApp(){if(!confirm("確定清除這個網站保存的全部資料嗎？"))return;localStorage.removeItem(STORAGE_KEY);state=normalizeState({});saveState();fillSettings();closeSheets();renderAll();toast("已清除本網站資料")}
 function syncAction(){
   openSettings();
-  toast("請使用『從淡江課表頁抓取』，避免瀏覽器跨來源 CORS 限制。");
+  // 直接開始開啟 TKU iLife API，保留設定頁作為操作說明與書籤入口。
+  setTimeout(()=>openTkuCoursePage(),80);
+  toast("已開啟 TKU iLife API；登入後點「抓取 TKU JSON」書籤。");
 }
 
 const TKU_ALLOWED_MESSAGE_ORIGINS = [
@@ -254,20 +256,43 @@ async function copyTkuBookmarklet(){
   }
 }
 
+function courseMergeKey(c){
+  const id=trim(c?.id);
+  if(id) return `id:${id}`;
+  return `name:${trim(c?.name).replace(/\s+/g," ").toLowerCase()}|seat:${trim(c?.seatNumber)}|dept:${trim(c?.department)}|class:${trim(c?.className)}`;
+}
+function mergeImportedCourses(imported){
+  const oldMap=new Map();
+  for(const c of state.courses||[]) oldMap.set(courseMergeKey(c),c);
+  return imported.map(c=>{
+    const old=oldMap.get(courseMergeKey(c));
+    if(!old) return c;
+    return normalizeCourse({
+      ...c,
+      customName: old.customName || "",
+      note: old.note || "",
+      journal: Array.isArray(old.journal) ? old.journal : [],
+      // 保留舊資料中較完整的學校資訊，但以本次 API 新資料優先。
+      description: c.description || old.description || "",
+      pdf: c.pdf || old.pdf || ""
+    });
+  });
+}
+
 function applyCapturedPayload(data){
   if(!data||data.type!=="TKU_TIMETABLE_CAPTURE"||![1,2].includes(data.version))return false;
   let parsed=null;
   if(Array.isArray(data.rawRows)) parsed=parseILifeRows(data.rawRows);
   else if(Array.isArray(data.courses)) parsed={ok:true,courses:data.courses.map(normalizeCourse).filter(Boolean),source:data.source||"淡江課表頁抓取"};
   if(!parsed?.ok||!parsed.courses.length){toast(parsed?.error||"已收到資料，但沒有可用課程。","error");return false;}
-  state.courses=parsed.courses;
+  state.courses=mergeImportedCourses(parsed.courses);
   state.importedAt=data.capturedAt||new Date().toISOString();
   state.source=parsed.source||data.source||"TKU iLife JSON";
   state.semester=state.semester||"淡江課表";
   saveState();
   renderAll();
   fillSettings();
-  const detail=`已收到 ${state.courses.length} 門課、${state.courses.reduce((n,c)=>n+c.times.length,0)} 個上課時段。\n來源：${state.source}\n時間：${fmtDateTime(state.importedAt)}`;
+  const detail=`已收到 ${state.courses.length} 門課、${state.courses.reduce((n,c)=>n+c.times.length,0)} 個上課時段。\n來源：${state.source}\n時間：${fmtDateTime(state.importedAt)}\n自訂課名／備註／記事：已保留`;
   if(el("captureStatus")) el("captureStatus").textContent=detail;
   toast(`已抓到 ${state.courses.length} 門課`);
   return true;

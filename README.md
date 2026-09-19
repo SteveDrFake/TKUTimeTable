@@ -1,36 +1,31 @@
-# 淡江課表 Clean v6：手機分享同步
+# 淡江課表 PWA
 
-本版本保留原本可正常運作的課表頁面與 TKU iLife JSON 解析，新增 PWA Web Share Target 接收功能。
+GitHub Pages：`https://stevedrfake.github.io/TKUTimeTable/`
 
-## 使用
+## 一鍵同步 TKU iLife
 
-1. 把 web 內檔案放到 GitHub Pages 根目錄。
-2. 在支援 PWA 分享目標的 Android 瀏覽器中安裝網站到主畫面。
-3. 開啟 TKU iLife API：`https://ilifeapp.az.tku.edu.tw/api/stu/course`
-4. 登入後，使用手機系統分享，把 API JSON 文字或 `.json` 檔案分享給「淡江課表」。
-5. PWA 會接收資料、解析並回到課表。
+1. 開啟 PWA → 設定 → **開啟一鍵抓取工具**。
+2. 第一次只需把「抓取淡江課表」建立成瀏覽器書籤。
+3. 之後開啟 `https://ilifeapp.az.tku.edu.tw/api/stu/course`，完成 TKU 登入，直到畫面顯示 JSON 陣列。
+4. 按一次「抓取淡江課表」書籤。
+5. 程式會把目前頁面的 JSON 封裝後送到 `capture.html`，再由 PWA 自己的 parser 匯入。
 
-## 限制
+### 為什麼不用 PWA Share Target 當主要同步
+部分手機瀏覽器分享網頁時只會送 URL／標題，不會送出目前頁面顯示的 JSON 本文；因此 Share Target 保留作為檔案／文字分享的備援，而一鍵書籤工具負責主要同步流程。
 
-Web Share Target 是瀏覽器支援度有限的功能，而且 PWA 必須先安裝才能出現在系統分享目標中。分享整個網頁時，瀏覽器通常只會提供網址；本功能因此最可靠的輸入是「分享 JSON 文字」或分享已儲存的 `.json` 檔案。
-
-此版本沒有直接從 GitHub Pages `fetch()` TKU API，因此不會碰到之前的 CORS。
-
-
-## v7 install fix
-Added 192x192 and 512x512 PWA icons and an in-page install button for supported browsers.
+### 隱私
+工具只讀取目前 TKU API 頁面可見的 JSON，不會要求或保存帳號密碼、Cookie、Token。課表資料預設只存在你的瀏覽器本機儲存。
 
 
-## v9 share fix
-Fixed the Share Target inbox cache-key mismatch. The Service Worker and share.html now use the same absolute inbox key.
+## v15：PWA ↔ TKU 頁面 postMessage
+
+主要同步方式改為：從本 PWA 按「開啟淡江 iLife API」開出的 TKU 分頁，使用已安裝的「抓取淡江課表」bookmarklet。bookmarklet 直接讀取目前 TKU 頁面的 JSON，再透過 `window.opener.postMessage()` 傳回本 PWA；PWA 收到後立即解析、儲存並更新課表。
+
+若瀏覽器沒有保留 `window.opener`，bookmarklet 會退回 `capture.html#data=...` 的備援方式。
+
+不會要求使用者把密碼、Cookie 或 Token 貼給課表網站。
 
 
-## v10 share final
-Aligned share.html cache name with the Service Worker (`tku-timetable-share-v9`) and fixed literal `\\n` display in status messages.
+## v15：PWA ↔ TKU 頁面 postMessage
 
-
-### 手機分享同步注意事項
-
-PWA 的 Share Target 可以收到系統分享過來的文字或檔案，但瀏覽器不一定會把目前網頁顯示的 JSON 本文放進分享資料；有些情況只會傳頁面標題與網址。純 GitHub Pages 無法因此繞過淡江 API 的跨來源限制讀取登入後內容。
-
-目前版本另外支援直接分享 `.json` / `.txt` 檔案。部署新版本後，建議移除舊版「淡江課表」PWA，再重新安裝一次，讓手機重新註冊 Share Target。
+從「淡江課表」本頁按「開啟淡江 iLife API」後，TKU 分頁由本 PWA 建立 opener 關係。bookmarklet 在 TKU 頁面直接讀取 JSON，透過 `window.opener.postMessage()` 傳回 PWA。PWA 匯入後會回傳 ACK；若 1.4 秒內沒有 ACK，bookmarklet 自動退回 `capture.html#data=...` 備援流程。

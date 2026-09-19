@@ -232,6 +232,7 @@ function consumePendingSharedJson(){
 }
 
 const TKU_ALLOWED_MESSAGE_ORIGINS = [
+  "https://ilifeapp.az.tku.edu.tw",
   "https://sso.tku.edu.tw",
   "https://sinfo.ais.tku.edu.tw",
   "http://sinfo.ais.tku.edu.tw"
@@ -241,31 +242,33 @@ function tkuCaptureBookmarklet(){
   const targetOrigin=location.origin;
   const captureUrl=new URL("./capture.html",location.href).href;
   const code=`javascript:(()=>{try{\
-const clean=s=>String(s??"").replace(/\\s+/g," ").trim();\
-const enc=s=>{const bytes=new TextEncoder().encode(s),parts=[];for(let i=0;i<bytes.length;i++)parts.push(String.fromCharCode(bytes[i]));return btoa(parts.join("")).replace(/\\+/g,"-").replace(/\\//g,"_").replace(/=+$/g,"")};\
-const rowsFromJson=v=>{if(Array.isArray(v))return v;if(v&&typeof v==="object"){for(const k of ["data","rows","items","result","courses","list"]){if(Array.isArray(v[k]))return v[k]} }return null};\
-const body=clean(document.body?.innerText||document.documentElement?.innerText||"");\
-let parsed=null;try{parsed=JSON.parse(body)}catch{}\
-const rows=rowsFromJson(parsed);\
-if(rows){\
-  const payload={type:"TKU_TIMETABLE_CAPTURE",version:2,source:"TKU iLife API JSON",capturedAt:new Date().toISOString(),rawRows:rows};\
-  const opener=window.opener;\
-  if(opener&&!opener.closed){try{opener.postMessage(payload,"${targetOrigin}");alert("已抓到 "+rows.length+" 筆 TKU iLife 資料，已送回課表網站。請切回課表頁面。" );return}catch{}}\
-  const u="${captureUrl}#data="+enc(JSON.stringify(payload));\
-  location.href=u;\
-  return;\
-}\
-throw new Error("目前頁面不是可解析的 TKU iLife JSON。請先從課表網站按『開啟 TKU iLife 課表 API』，登入後直到畫面顯示 [ ... ] JSON 再執行此書籤。" );\
+const enc=s=>{const b=new TextEncoder().encode(s),a=[];for(let i=0;i<b.length;i++)a.push(String.fromCharCode(b[i]));return btoa(a.join("" )).replace(/\\+/g,"-").replace(/\\//g,"_").replace(/=+$/g,"")};\
+const rows=v=>{if(Array.isArray(v))return v;if(v&&typeof v==="object"){for(const k of ["data","rows","items","result","courses","list"]){if(Array.isArray(v[k]))return v[k]}}return null};\
+const text=String(document.body?.innerText||document.documentElement?.innerText||"").trim();\
+let parsed=null;try{parsed=JSON.parse(text)}catch{}\
+const data=rows(parsed);\
+if(!data?.length)throw new Error("這個頁面目前沒有直接可解析的 TKU JSON 陣列。請先登入，等頁面顯示 [ ... ] 後再點一次書籤。");\
+const payload={type:"TKU_TIMETABLE_CAPTURE",version:3,source:"TKU iLife API JSON",capturedAt:new Date().toISOString(),rawRows:data};\
+let done=false;\
+const ack=e=>{if(e.origin!=="${targetOrigin}")return;if(e.data?.type!=="TKU_TIMETABLE_CAPTURE_ACK")return;done=true;window.removeEventListener("message",ack);if(e.data.ok){alert("已抓到 "+data.length+" 筆課表資料，淡江課表已收到。 ");setTimeout(()=>{try{window.close()}catch{}},120);}else{alert("淡江課表收到資料，但匯入失敗。 ");}};\
+window.addEventListener("message",ack);\
+const opener=window.opener;\
+if(opener&&!opener.closed){try{opener.postMessage(payload,"${targetOrigin}");setTimeout(()=>{if(done)return;window.removeEventListener("message",ack);const u="${captureUrl}#data="+enc(JSON.stringify(payload));location.href=u;},1400);return;}catch{window.removeEventListener("message",ack)}}\
+const u="${captureUrl}#data="+enc(JSON.stringify(payload));location.href=u;\
 }catch(e){alert("抓取失敗："+(e?.message||e))}})();void 0;`;
   return code;
+}
+function openBookmarkletTool(){
+  const u=new URL("./tool.html",location.href);
+  window.location.href=u.href;
 }
 
 function openTkuCoursePage(){
   const url=trim(el("tkuCourseUrlInput").value)||"https://ilifeapp.az.tku.edu.tw/api/stu/course";
   try{new URL(url); }catch{toast("淡江課表網址格式不正確");return;}
-  const win=window.open(url,"tkuCourseCapture","noopener=false,width=1200,height=900");
+  const win=window.open(url,"tkuCourseCapture");
   if(!win){toast("瀏覽器阻擋了新視窗，請允許本網站開啟新視窗。")}
-  else {toast("已開啟淡江課表；登入並進入課表後，點你的抓取書籤。")}
+  else {toast("已開啟淡江 iLife API。登入並看到 JSON 後，點『抓取淡江課表』書籤，資料會直接回到本課表。")}
 }
 
 async function copyTkuBookmarklet(){
@@ -279,7 +282,7 @@ async function copyTkuBookmarklet(){
 }
 
 function applyCapturedPayload(data){
-  if(!data||data.type!=="TKU_TIMETABLE_CAPTURE"||![1,2].includes(data.version))return false;
+  if(!data||data.type!=="TKU_TIMETABLE_CAPTURE"||![1,2,3].includes(data.version))return false;
   let parsed=null;
   if(Array.isArray(data.rawRows)) parsed=parseILifeRows(data.rawRows);
   else if(Array.isArray(data.courses)) parsed={ok:true,courses:data.courses.map(normalizeCourse).filter(Boolean),source:data.source||"淡江課表頁抓取"};
@@ -298,7 +301,17 @@ function applyCapturedPayload(data){
 }
 function handleTkuCaptureMessage(event){
   if(!TKU_ALLOWED_MESSAGE_ORIGINS.includes(event.origin))return;
-  applyCapturedPayload(event.data);
+  if(event.data?.type!=="TKU_TIMETABLE_CAPTURE")return;
+  if(event.source && event.source===window)return;
+  const ok=applyCapturedPayload(event.data);
+  try{
+    event.source?.postMessage({
+      type:"TKU_TIMETABLE_CAPTURE_ACK",
+      version:3,
+      ok,
+      capturedAt:event.data?.capturedAt||""
+    },event.origin);
+  }catch{}
 }
 function consumeCaptureInbox(){
   try{
@@ -332,14 +345,14 @@ function bindEvents(){
   el("saveProfileButton").addEventListener("click",saveProfile);el("weekdaysAllButton").addEventListener("click",quickDays);el("periodsDayButton").addEventListener("click",periodsDay);el("periodsAllButton").addEventListener("click",periodsAll);
   el("showSeatInput").addEventListener("change",e=>{state.display.showSeat=e.target.checked;saveState();renderSchedule()});el("showRoomInput").addEventListener("change",e=>{state.display.showRoom=e.target.checked;saveState();renderSchedule()});el("showTeacherInput").addEventListener("change",e=>{state.display.showTeacher=e.target.checked;saveState();renderSchedule()});
   el("openImportButton").addEventListener("click",()=>{el("apiJsonInput").value="";el("importPreview").textContent="等待匯入。";pendingImport=null;openSheet("importSheet")});el("previewImportButton").addEventListener("click",previewImport);el("commitImportButton").addEventListener("click",commitImport);
-  el("openTkuCoursePageButton").addEventListener("click",openTkuCoursePage);el("copyTkuBookmarkletButton").addEventListener("click",copyTkuBookmarklet);el("testCaptureMessageButton").addEventListener("click",testCaptureMessage);window.addEventListener("message",handleTkuCaptureMessage);
+  el("openTkuCoursePageButton").addEventListener("click",openTkuCoursePage);el("openBookmarkletToolButton").addEventListener("click",openBookmarkletTool);el("copyTkuBookmarkletButton").addEventListener("click",copyTkuBookmarklet);el("testCaptureMessageButton").addEventListener("click",testCaptureMessage);window.addEventListener("message",handleTkuCaptureMessage);
   el("loadDemoButton").addEventListener("click",()=>{state.courses=sampleState();state.semester=state.semester||"範例學期";state.importedAt=new Date().toISOString();state.source="內建範例";saveState();fillSettings();renderAll();toast("已載入範例課表")});el("exportButton").addEventListener("click",exportData);el("jsonFileInput").addEventListener("change",e=>{const f=e.target.files?.[0];if(f)importFile(f);e.target.value=""});el("clearCoursesButton").addEventListener("click",clearCourses);el("resetAppButton").addEventListener("click",resetApp);
   el("cancelCourseButton").addEventListener("click",closeSheets);el("saveCourseButton").addEventListener("click",saveCurrentCourse);el("deleteCourseButton").addEventListener("click",deleteCurrentCourse);el("addJournalButton").addEventListener("click",addJournal);el("installHelpButton").addEventListener("click",showInstallHelp);
   el("overlay").addEventListener("click",e=>{if(e.target===el("overlay"))closeSheets()});document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",closeSheets));window.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheets()});window.addEventListener("online",renderHeader);window.addEventListener("offline",renderHeader);
   window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredInstallPrompt=e});
 }
 
-function registerPwa(){if("serviceWorker" in navigator && location.protocol.startsWith("http")){window.addEventListener("load",()=>navigator.serviceWorker.register("/TKUTimeTable/service-worker.js?v=12").catch(()=>{}))}}
+function registerPwa(){if("serviceWorker" in navigator && location.protocol.startsWith("http")){window.addEventListener("load",()=>navigator.serviceWorker.register("/TKUTimeTable/service-worker.js?v=15").catch(()=>{}))}}
 function boot(){try{bindEvents();consumeCaptureInbox();consumePendingSharedJson();renderAll();registerPwa()}catch(e){console.error(e);toast(`初始化失敗：${e.message}`)}}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();
 })();

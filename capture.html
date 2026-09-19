@@ -15,7 +15,7 @@ try{
  const data=new URLSearchParams(location.hash.slice(1)).get("data");
  if(!data)throw new Error("沒有收到資料");
  const payload=JSON.parse(b64uDecode(data));
- if(payload?.type!=="TKU_TIMETABLE_CAPTURE"||![1,2].includes(payload.version)||(!Array.isArray(payload.rawRows)&&!Array.isArray(payload.courses)))throw new Error("資料格式不正確");
+ if(payload?.type!=="TKU_TIMETABLE_CAPTURE"||![1,2,3].includes(payload.version)||(!Array.isArray(payload.rawRows)&&!Array.isArray(payload.courses)))throw new Error("資料格式不正確");
  localStorage.setItem(INBOX_KEY,JSON.stringify(payload));
  location.replace("./index.html?captured=1");
 }catch(e){document.getElementById("msg").textContent="接收失敗："+(e.message||e);}

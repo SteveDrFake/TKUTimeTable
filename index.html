@@ -109,16 +109,17 @@
         <section class="settings-section">
           <div class="section-title-row"><h2>從淡江 iLife API 取得課表</h2></div>
           <div class="notice-box">
-            <strong>不經過 GitHub → TKU 的 CORS。</strong> 會在淡江課表頁面本身讀取資料，再送回本網站。
+            <strong>不經過 GitHub → TKU 的 CORS；資料在你目前已登入的 TKU 頁面內讀取。</strong> 會在淡江課表頁面本身讀取資料，再送回本網站。
           </div>
           <label class="field"><span>淡江 iLife API 網址</span><input id="tkuCourseUrlInput" type="url" value="https://ilifeapp.az.tku.edu.tw/api/stu/course" autocomplete="off"></label>
           <div class="two-col">
             <button id="openTkuCoursePageButton" class="full-btn primary" type="button">📚 開啟淡江 iLife API</button>
-            <button id="copyTkuBookmarkletButton" class="full-btn" type="button">📋 複製「抓取 TKU JSON」書籤</button>
+            <button id="openBookmarkletToolButton" class="full-btn" type="button">🪄 開啟一鍵抓取工具</button>
           </div>
+          <button id="copyTkuBookmarkletButton" class="full-btn" type="button">📋 複製「抓取淡江課表」書籤</button>
           <button id="testCaptureMessageButton" class="full-btn" type="button">🧪 測試資料接收</button>
           <div id="captureStatus" class="diagnostic-box">尚未接收淡江課表資料。</div>
-          <p class="hint">第一次使用：先複製書籤並建立瀏覽器書籤；之後按「開啟淡江 iLife API」，完成登入，等畫面出現真正的 JSON 陣列，再點「抓取 TKU JSON」書籤。</p>
+          <p class="hint">第一次使用：開啟「一鍵抓取工具」完成書籤設定。從本頁按「開啟淡江 iLife API」後完成登入，看到 JSON，再點一次「抓取淡江課表」書籤；資料會直接 postMessage 回這個 PWA 並自動更新。</p>
         </section>
 
         <section class="settings-section">
@@ -209,6 +210,6 @@
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <input id="installProbe" type="hidden">
-  <script src="./app.js?v=2" defer></script>
+  <script src="./app.js?v=13" defer></script>
 </body>
 </html>

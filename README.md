@@ -1,29 +1,21 @@
-# 淡江課表 Clean v3
+# 淡江課表 Clean v6：手機分享同步
 
-這一版以 Clean v1/v2 的穩定 GitHub Pages 介面為基礎，正式把 **TKU iLife API JSON** 當作課表資料來源。
+本版本保留原本可正常運作的課表頁面與 TKU iLife JSON 解析，新增 PWA Web Share Target 接收功能。
 
-## 主要流程
-1. 在「設定 → 從淡江 iLife API 取得課表」建立「抓取 TKU JSON」書籤。
-2. 按「開啟淡江 iLife API」，在淡江網域完成登入。
-3. API 顯示 JSON 陣列後，執行書籤。
-4. JSON 會回到本網站並自動解析、保存。
+## 使用
 
-## API 欄位
-- weekno：星期 1–7
-- sessno：節次 1–14
-- seatno：課程固定座號
-- ch_cos_name：中文課名
-- teach_name：老師
-- room：教室
-- sesstime：起始時間
+1. 把 web 內檔案放到 GitHub Pages 根目錄。
+2. 在支援 PWA 分享目標的 Android 瀏覽器中安裝網站到主畫面。
+3. 開啟 TKU iLife API：`https://ilifeapp.az.tku.edu.tw/api/stu/course`
+4. 登入後，使用手機系統分享，把 API JSON 文字或 `.json` 檔案分享給「淡江課表」。
+5. PWA 會接收資料、解析並回到課表。
 
-## 同步行為
-- 新 API 資料優先。
-- 原本的自訂課名、備註、記事會依課程鍵保留。
-- 同一門課的不同時間會合併。
-- 課表只保存在使用者裝置的 localStorage。
+## 限制
 
-## GitHub Pages
-只需要上傳靜態檔：index.html、app.js、style.css、manifest.json、service-worker.js、capture.html、sample-tku-api.json。
+Web Share Target 是瀏覽器支援度有限的功能，而且 PWA 必須先安裝才能出現在系統分享目標中。分享整個網頁時，瀏覽器通常只會提供網址；本功能因此最可靠的輸入是「分享 JSON 文字」或分享已儲存的 `.json` 檔案。
 
-GitHub Pages 不能讓前端直接繞過 TKU API 的 CORS，因此本專案不在 GitHub 頁面直接 fetch TKU API。
+此版本沒有直接從 GitHub Pages `fetch()` TKU API，因此不會碰到之前的 CORS。
+
+
+## v7 install fix
+Added 192x192 and 512x512 PWA icons and an in-page install button for supported browsers.

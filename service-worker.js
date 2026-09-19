@@ -1,6 +1,6 @@
-const CACHE="tku-timetable-v6-share-cache";
+const CACHE="tku-timetable-v7-install-cache";
 const SHARE_CACHE="tku-timetable-v6-share-inbox";
-const ASSETS=["./","./index.html","./style.css","./app.js","./manifest.json","./capture.html","./share.html"];
+const ASSETS=["./","./index.html","./style.css","./app.js","./manifest.json","./capture.html","./share.html","./icons/icon-192.png","./icons/icon-512.png"];
 
 self.addEventListener("install",event=>{
   event.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()));
@@ -37,14 +37,14 @@ async function storeShareRequest(request){
   };
   const cache=await caches.open(SHARE_CACHE);
   await cache.put(new Request("__share_inbox__"),new Response(JSON.stringify(payload),{headers:{"Content-Type":"application/json"}}));
-  return Response.redirect(new URL("./share.html?received=1",self.location.href).href,303);
+  return Response.redirect(new URL("./share.html","./icons/icon-192.png","./icons/icon-512.png?received=1",self.location.href).href,303);
 }
 
 self.addEventListener("fetch",event=>{
   const u=new URL(event.request.url);
   if(u.origin!==self.location.origin)return;
 
-  const sharePath=new URL("./share.html",self.location.href).pathname;
+  const sharePath=new URL("./share.html","./icons/icon-192.png","./icons/icon-512.png",self.location.href).pathname;
   if(event.request.method==="POST" && u.pathname===sharePath){
     event.respondWith(storeShareRequest(event.request));
     return;

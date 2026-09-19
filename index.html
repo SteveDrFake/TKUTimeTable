@@ -96,29 +96,17 @@
         </section>
 
         <section class="settings-section">
-          <div class="section-title-row"><h2>課表資料</h2></div>
-          <p class="hint">這個版本先專注在穩定的 GitHub Pages 前端。你可以貼上 TKU iLife API 的 JSON，網站會在本機解析與保存。GitHub Pages 本身不能執行後端，也不能直接繞過 TKU API 的 CORS。</p>
-          <button id="openImportButton" class="full-btn primary" type="button">📥 匯入 TKU 課表資料</button>
+          <div class="section-title-row"><h2>TKU 課表同步</h2></div>
+          <p class="hint">課表資料以 TKU iLife API 的 JSON 為正式來源。GitHub Pages 不能直接跨來源讀取 TKU API，因此這裡採用「開啟 TKU API 頁面 → 在該頁執行抓取書籤 → JSON 回傳本網站」的方式，不需要把密碼、Cookie 或 Token 提供給網站。</p>
+          <button id="openTkuApiButton" class="full-btn primary" type="button">📚 開啟 TKU iLife 課表 API</button>
+          <button id="copyCaptureBookmarkButton" class="full-btn" type="button">📋 複製「TKU 抓課表」書籤程式</button>
+          <div id="captureStatus" class="diagnostic-box">尚未啟動 TKU 課表抓取。</div>
+          <button id="openImportButton" class="full-btn" type="button">📥 手動貼上 TKU JSON</button>
           <button id="loadDemoButton" class="full-btn" type="button">載入範例課表</button>
           <button id="exportButton" class="full-btn" type="button">匯出本機資料 JSON</button>
           <label class="full-btn file-btn">從 JSON 檔案匯入<input id="jsonFileInput" type="file" accept="application/json,.json"></label>
           <button id="clearCoursesButton" class="full-btn" type="button">清除課表（保留設定）</button>
           <button id="resetAppButton" class="full-btn danger" type="button">清除這個網站的全部資料</button>
-        </section>
-
-        <section class="settings-section">
-          <div class="section-title-row"><h2>從淡江課表頁抓取</h2></div>
-          <div class="notice-box">
-            <strong>不經過 GitHub → TKU 的 CORS。</strong> 會在淡江課表頁面本身讀取資料，再送回本網站。
-          </div>
-          <label class="field"><span>淡江課表網址</span><input id="tkuCourseUrlInput" type="url" value="https://sso.tku.edu.tw/aissinfo/emis/TMWC020.aspx" autocomplete="off"></label>
-          <div class="two-col">
-            <button id="openTkuCoursePageButton" class="full-btn primary" type="button">📚 開啟淡江課表</button>
-            <button id="copyTkuBookmarkletButton" class="full-btn" type="button">📋 複製「抓取淡江課表」書籤</button>
-          </div>
-          <button id="testCaptureMessageButton" class="full-btn" type="button">🧪 測試資料接收</button>
-          <div id="captureStatus" class="diagnostic-box">尚未接收淡江課表資料。</div>
-          <p class="hint">第一次使用：先按「複製書籤」，在瀏覽器建立一個書籤；之後在淡江課表頁登入並打開課表，再點這個書籤即可把資料送回本網站。</p>
         </section>
 
         <section class="settings-section">
@@ -137,7 +125,7 @@
       <header class="sheet-header">
         <div>
           <div id="importTitle" class="sheet-title">匯入 TKU 課表資料</div>
-          <div class="sheet-subtitle">支援 iLife JSON，也支援一般課表 JSON</div>
+          <div class="sheet-subtitle">支援 TKU iLife JSON，也支援一般課表 JSON</div>
         </div>
         <button class="close-btn" data-close type="button" aria-label="關閉">×</button>
       </header>
@@ -201,6 +189,6 @@
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <input id="installProbe" type="hidden">
-  <script src="./app.js?v=2" defer></script>
+  <script src="./app.js" defer></script>
 </body>
 </html>

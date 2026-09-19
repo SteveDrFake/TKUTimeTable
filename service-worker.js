@@ -1,5 +1,5 @@
-const CACHE = "tku-timetable-v17";
-const SHARE_CACHE = "tku-timetable-share-v17";
+const CACHE = "tku-timetable-v18";
+const SHARE_CACHE = "tku-timetable-share-v18";
 const BASE = "/TKUTimeTable/";
 const SHARE_KEY = BASE + "__share_inbox__";
 

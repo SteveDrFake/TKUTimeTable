@@ -14,18 +14,18 @@ body{margin:0;background:#f3f4f6;color:#111827;font-family:system-ui,-apple-syst
 <main class="wrap">
 <a class="back" href="./">← 回到課表</a>
 <section class="card">
-<h1>🪄 一鍵抓取淡江課表</h1>
-<p class="muted">這個小工具只在你已經開啟的 TKU iLife API 頁面上讀取畫面中的 JSON。若該頁是由「淡江課表」開啟，會直接用 postMessage 把資料送回 PWA；不需要把 JSON 放進網址。不會讀取或保存密碼、Cookie 或 Token。</p>
-<div class="step"><div class="num">1</div><div><strong>先安裝一次書籤</strong><div class="muted">桌面瀏覽器可以把下面的按鈕拖到書籤列。手機瀏覽器請按「複製程式碼」，再建立一個普通書籤，把網址改成這段程式碼。</div></div></div>
+<h1>🪄 一鍵同步淡江課表</h1>
+<p class="muted">這個小工具會在 TKU iLife API 頁面本身執行同源 fetch，直接取得 /api/stu/course 的課表 JSON。若該頁是由「淡江課表」開啟，會優先用 postMessage 把資料送回 PWA；若手機瀏覽器沒有保留 opener，則使用接收頁面的備援方式。不會讀取或保存密碼、Cookie 或 Token。</p>
+<div class="step"><div class="num">1</div><div><strong>先安裝一次書籤</strong><div class="muted">桌面瀏覽器可以把下面的按鈕拖到書籤列。Android Chrome 請按「複製程式碼」，建立一個普通書籤，再把書籤網址替換成這段程式碼。</div></div></div>
 <a id="bookmarklet" class="bookmarklet" href="#">抓取淡江課表</a>
 <button id="copy" class="btn" type="button">📋 複製一鍵工具程式碼</button>
 <div id="msg" class="ok"></div>
-<div class="step"><div class="num">2</div><div><strong>之後每次同步</strong><div class="muted">從課表 PWA 按「開啟淡江 iLife API」→ 完成登入 → 等畫面出現 JSON → 按「抓取淡江課表」書籤。</div></div></div>
-<div class="step"><div class="num">3</div><div><strong>自動回到課表</strong><div class="muted">工具會先直接 postMessage 回原本開啟 TKU 頁面的淡江課表，並等待 PWA 回傳確認；若手機瀏覽器沒有保留 opener，會自動退回接收頁面的備援方式。</div></div></div>
+<div class="step"><div class="num">2</div><div><strong>之後每次同步</strong><div class="muted">從課表 PWA 按「同步」→ 完成淡江登入 → 在 API 頁面按「抓取淡江課表」書籤；不需要全選或複製 JSON。</div></div></div>
+<div class="step"><div class="num">3</div><div><strong>自動回到課表</strong><div class="muted">工具會直接把取得的 JSON 傳回原本的課表 PWA；若手機瀏覽器沒有保留 opener，會自動跳到接收頁面完成匯入。</div></div></div>
 </section>
 <section class="card">
 <h2 style="margin-top:0">手機／電腦設定方式</h2>
-<ol><li>點「複製一鍵工具程式碼」。</li><li>在瀏覽器建立一個新書籤，例如命名「抓取淡江課表」。</li><li>編輯該書籤，把網址欄完整替換成剛複製的程式碼。</li><li>之後不用再複製 JSON；進入 TKU API 頁面直接點這個書籤即可。</li></ol>
+<ol><li>點「複製一鍵工具程式碼」。</li><li>在 Chrome 建立書籤，例如「抓取淡江課表」。</li><li>編輯書籤，把網址欄替換成剛複製的程式碼。</li><li>之後進入 TKU iLife API 並完成登入，直接點這個書籤即可同步。</li></ol>
 <div class="warn"><strong>注意：</strong>這個工具必須在真正顯示 TKU JSON 的頁面執行。如果頁面只顯示錯誤、登入頁或其他文字，工具會提示你先完成登入。</div>
 </section>
 </main>
@@ -33,12 +33,8 @@ body{margin:0;background:#f3f4f6;color:#111827;font-family:system-ui,-apple-syst
 (()=>{
 const targetOrigin=location.origin;
 const captureUrl=new URL("./capture.html",location.href).href;
-const raw=`javascript:(()=>{try{const enc=s=>{const b=new TextEncoder().encode(s),a=[];for(let i=0;i<b.length;i++)a.push(String.fromCharCode(b[i]));return btoa(a.join("" )).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"")};const rows=v=>{if(Array.isArray(v))return v;if(v&&typeof v==="object"){for(const k of ["data","rows","items","result","courses","list"]){if(Array.isArray(v[k]))return v[k]}}return null};const text=String(document.body?.innerText||document.documentElement?.innerText||"").trim();let parsed=null;try{parsed=JSON.parse(text)}catch{}const data=rows(parsed);if(!data?.length)throw new Error("這個頁面目前沒有直接可解析的 TKU JSON 陣列。請先登入，等頁面顯示 [ ... ] 後再點一次書籤。");const payload={type:"TKU_TIMETABLE_CAPTURE",version:3,source:"TKU iLife API JSON",capturedAt:new Date().toISOString(),rawRows:data};let done=false;const ack=e=>{if(e.origin!=="${targetOrigin}")return;if(e.data?.type!=="TKU_TIMETABLE_CAPTURE_ACK")return;done=true;window.removeEventListener("message",ack);if(e.data.ok){alert("已抓到 "+data.length+" 筆課表資料，淡江課表已收到。 ");setTimeout(()=>{try{window.close()}catch{}},120);}else{alert("淡江課表收到資料，但匯入失敗。 ");}};window.addEventListener("message",ack);const opener=window.opener;if(opener&&!opener.closed){try{opener.postMessage(payload,"${targetOrigin}");setTimeout(()=>{if(done)return;window.removeEventListener("message",ack);const u="${captureUrl}#data="+enc(JSON.stringify(payload));location.href=u;},1400);return;}catch{window.removeEventListener("message",ack)}}const u="${captureUrl}#data="+enc(JSON.stringify(payload));location.href=u;}catch(e){alert("抓取失敗："+(e?.message||e))}})();void 0;`;
-const finalCode=raw;
-const a=document.getElementById("bookmarklet");
-a.href=finalCode;
-document.getElementById("copy").addEventListener("click",async()=>{try{await navigator.clipboard.writeText(finalCode);}catch{const t=document.createElement("textarea");t.value=finalCode;document.body.appendChild(t);t.select();document.execCommand("copy");t.remove();}document.getElementById("msg").textContent="已複製。建立一個書籤，把網址換成這段程式碼即可。";});
+const raw=`javascript:(async()=>{try{const r=await fetch("/api/stu/course",{credentials:"include"});if(!r.ok)throw new Error("TKU API 回應 HTTP "+r.status+"，請先確認已登入淡江。");const data=await r.json();const rows=Array.isArray(data)?data:(data&&Array.isArray(data.data)?data.data:(data&&Array.isArray(data.rows)?data.rows:null));if(!rows?.length)throw new Error("TKU API 沒有回傳課表資料。");const enc=s=>{const b=new TextEncoder().encode(s),a=[];for(let i=0;i<b.length;i++)a.push(String.fromCharCode(b[i]));return btoa(a.join("" )).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"")};const payload={type:"TKU_TIMETABLE_CAPTURE",version:4,source:"TKU iLife /api/stu/course",capturedAt:new Date().toISOString(),rawRows:rows};let done=false;const ack=e=>{if(e.origin!=="${targetOrigin}")return;if(e.data?.type!=="TKU_TIMETABLE_CAPTURE_ACK")return;done=true;window.removeEventListener("message",ack);if(e.data.ok){alert("已同步 "+rows.length+" 筆淡江課表資料。 ");setTimeout(()=>{try{window.close()}catch{}},300);}else alert("資料已送回課表，但匯入失敗。 ")};window.addEventListener("message",ack);const opener=window.opener;if(opener&&!opener.closed){try{opener.postMessage(payload,"${targetOrigin}");setTimeout(()=>{if(done)return;window.removeEventListener("message",ack);location.href="${captureUrl}#data="+enc(JSON.stringify(payload));},1200);return;}catch{window.removeEventListener("message",ack)}}location.href="${captureUrl}#data="+enc(JSON.stringify(payload));}catch(e){alert("同步失敗："+(e?.message||e))}})();void 0;`;
+const a=document.getElementById("bookmarklet");a.href=raw;document.getElementById("copy").addEventListener("click",async()=>{try{await navigator.clipboard.writeText(raw);}catch{const t=document.createElement("textarea");t.value=raw;document.body.appendChild(t);t.select();document.execCommand("copy");t.remove();}document.getElementById("msg").textContent="已複製。建立書籤後，把網址替換成這段程式碼即可。";});
 })();
 </script>
-</body>
-</html>
+</body></html>

@@ -1,16 +1,24 @@
-# 淡江課表 v17 — PWA + 剪貼簿同步
+# 淡江課表 v18 — PWA + TKU iLife API 同步
 
-手機最簡單的同步方式：
+## Android 使用方式
 
-1. 開啟淡江 iLife API：`https://ilifeapp.az.tku.edu.tw/api/stu/course`
-2. 登入後看到純 JSON 頁面（通常是 `<pre>`）。
-3. 在 JSON 頁面使用瀏覽器的「全選」→「複製」。
-4. 回到淡江課表，設定 →「📋 從剪貼簿讀取 TKU JSON」。
-5. 網站會直接解析 JSON 並自動更新課表。
+1. 在課表 PWA 的「設定」開啟「一鍵同步工具」。
+2. 點「複製『抓取淡江課表』書籤」。
+3. 在 Chrome Android 建立一個普通書籤，把網址替換成複製的 `javascript:` 程式碼。第一次設定只需要做一次。
+4. 回到課表 PWA 按「同步」。
+5. 在淡江 iLife 完成登入後，點「抓取淡江課表」書籤。
+6. 書籤程式會在 `ilifeapp.az.tku.edu.tw` 頁面同源執行 `fetch("/api/stu/course", {credentials:"include"})`，直接取得課表 JSON，再送回 PWA。
 
-這個流程是使用者主動複製後，由 HTTPS PWA 透過 Clipboard API 讀取文字；不需要 bookmarklet，也不需要把帳號、密碼、Cookie 或 Token 提供給課表網站。Clipboard `readText()` 需要安全來源（HTTPS），且瀏覽器可能要求額外的使用者授權／貼上確認。
+不需要進入 020/090，也不需要全選、複製 JSON；PWA 不會取得或保存淡江密碼。若 Android 瀏覽器沒有保留 `window.opener`，工具會改用 `capture.html` 的備援接收流程。
 
-也保留 JSON 文字框、JSON 檔案匯入、PWA 安裝與舊的 Share Target / postMessage 備援。
+## 資料格式
 
+支援 TKU iLife `/api/stu/course` 回傳的陣列，欄位包括 `weekno`, `sessno`, `week`, `sesstime`, `seatno`, `ch_cos_name`, `en_cos_name`, `teach_name`, `teach_name_en`, `note`, `room`。每一個星期／節次為一筆，PWA 會依「課名 + 座號」等資料把同一門課的多個時段合併。
 
-本版 v17：修正初始化事件綁定錯誤，加入安全事件綁定；新增淺色／深色模式，設定會保存在本機。
+## v18
+
+- 深色模式保留
+- 修正事件綁定安全處理
+- 改用 TKU iLife `/api/stu/course` 作主要同步來源
+- bookmarklet 改成在 iLife 頁面同源 fetch，不再讀取頁面顯示文字
+- 保留 JSON 匯入、剪貼簿、Share Target 等備援

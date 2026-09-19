@@ -2,9 +2,10 @@
   "name": "淡江課表",
   "short_name": "淡江課表",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f3f4f6",
-  "theme_color": "#1f2937",
-  "lang": "zh-Hant",
-  "icons": []
+  "theme_color": "#111827",
+  "lang": "zh-TW",
+  "description": "淡江大學學生課表網站"
 }

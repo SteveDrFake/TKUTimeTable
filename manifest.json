@@ -7,5 +7,15 @@
   "background_color": "#f3f4f6",
   "theme_color": "#111827",
   "lang": "zh-TW",
-  "description": "淡江大學學生課表網站"
+  "description": "淡江大學學生課表網站",
+  "share_target": {
+    "action": "./share.html",
+    "method": "POST",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }

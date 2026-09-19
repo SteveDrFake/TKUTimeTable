@@ -20,7 +20,7 @@
         <div id="semesterLabel" class="brand-subtitle">尚未載入課表</div>
       </div>
       <div class="top-actions">
-        <button id="syncButton" class="top-btn primary" type="button">同步課表</button>
+        <button id="syncButton" class="top-btn primary" type="button">同步</button>
         <button id="settingsButton" class="top-btn" type="button">設定</button>
       </div>
     </header>
@@ -97,7 +97,7 @@
 
         <section class="settings-section">
           <div class="section-title-row"><h2>課表資料</h2></div>
-          <p class="hint">課表資料以 TKU iLife API JSON 為正式來源。網站只在本機解析與保存，不會要求你提供密碼、Cookie 或 Token。</p>
+          <p class="hint">這個版本先專注在穩定的 GitHub Pages 前端。你可以貼上 TKU iLife API 的 JSON，網站會在本機解析與保存。GitHub Pages 本身不能執行後端，也不能直接繞過 TKU API 的 CORS。</p>
           <button id="openImportButton" class="full-btn primary" type="button">📥 匯入 TKU 課表資料</button>
           <button id="loadDemoButton" class="full-btn" type="button">載入範例課表</button>
           <button id="exportButton" class="full-btn" type="button">匯出本機資料 JSON</button>
@@ -118,7 +118,15 @@
           </div>
           <button id="testCaptureMessageButton" class="full-btn" type="button">🧪 測試資料接收</button>
           <div id="captureStatus" class="diagnostic-box">尚未接收淡江課表資料。</div>
-          <p class="hint">第一次使用：先建立「抓取 TKU JSON」書籤；之後按「開啟淡江 iLife API」，完成登入，等畫面出現真正的 JSON 陣列，再點書籤。同步時會保留你之前的自訂課名、備註與記事。</p>
+          <p class="hint">第一次使用：先複製書籤並建立瀏覽器書籤；之後按「開啟淡江 iLife API」，完成登入，等畫面出現真正的 JSON 陣列，再點「抓取 TKU JSON」書籤。</p>
+        </section>
+
+        <section class="settings-section">
+          <div class="section-title-row"><h2>📲 手機分享同步</h2></div>
+          <div class="notice-box">
+            <strong>一次設定，之後用手機分享回來。</strong>
+            <div>把本網站安裝到主畫面後，若你的瀏覽器支援 PWA 分享目標，可以在 TKU iLife API 頁面分享 JSON 文字或 .json 檔案給「淡江課表」，網站會自動匯入。</div>
+          </div>
         </section>
 
         <section class="settings-section">
@@ -201,6 +209,6 @@
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <input id="installProbe" type="hidden">
-  <script src="./app.js?v=3" defer></script>
+  <script src="./app.js?v=2" defer></script>
 </body>
 </html>

@@ -176,32 +176,14 @@ function commitImport(){const result=pendingImport || previewImport();if(!result
 function sampleState(){
   const make=(id,name,seat,day,periods,teacher,room)=>({id,name,customName:"",department:"範例",grade:"",className:"",credits:"3",seatNumber:String(seat),description:"範例課程資料",pdf:"",note:"",journal:[],times:[{day,periods,teacher,room,startTimes:[]}]});
   return [
-    make("demo-00","人工智慧導論","098",1,[1],"翁老師","B 001"),
-    make("demo-01","探索永續","098",1,[2],"蔡主任","B 001"),
-    make("demo-02","校園與社區服務學習","095",1,[3],"黃教官","B 001"),
-    make("demo-03","校園與社區服務學習","095",1,[4],"虢教官","B 001"),
-    make("demo-04","線性代數","088",1,[6],"王教授","B 003"),
-    make("demo-05","微積分","096",1,[7,8],"何教授","B 004"),
-    make("demo-06","哲學概論","100",1,[9,10],"王教授","B 002"),
-    make("demo-07","程式語言","100",2,[1,2],"楊教授","B 002"),
-    make("demo-08","數學漫遊","096",2,[3],"王教授、伍教授、徐教授","B 002"),
-    make("demo-09","中國語文能力表達","099",2,[4],"劉老師","B 002"),
-    make("demo-10","台灣戰略地位","089",2,[6],"林教授","B 002"),
-    make("demo-11","Python程式語言","100",2,[7],"張老師","B 002"),
-    make("demo-12","基礎數學","090",2,[8,9],"鄭教授","C 002"),
-    make("demo-13","男、女生體育－匹克球興趣班","095",3,[1,2],"胡教練","B 001"),
-    make("demo-14","微積分","096",3,[3,4],"何教授","B 004"),
-    make("demo-15","統計入門","096",3,[6,7],"黃教授","C 002"),
-    make("demo-16","大學學習","000",3,[9],"王導師、何導師","B 001"),
-    make("demo-17","社團學習與實作－入門課程","096",3,[10],"鄒老師","B 001"),
-    make("demo-18","全民國防教育軍事訓練（一）－國防科技","099",4,[1,2],"陳教官","C 001"),
-    make("demo-19","男、女生體育－","094",4,[3,4],"胡教練","B 001"),
-    make("demo-20","線性代數","088",4,[7,8],"王教授","B 003"),
-    make("demo-21","微積分","096",4,[9],"陳助教","B 004"),
-    make("demo-22","程式語言","100",5,[2],"陳助教","B 002"),
-    make("demo-23","線性代數","088",5,[3],"陳助教","B 003"),
-    make("demo-24","英文（一）","077",5,[4],"強助教","B 002"),
-    make("demo-25","英文（一）","077",5,[6,7],"羅老師","B 002")  
+    make("demo-1","高等微積分","033",1,[1,2],"余成義","S 420"),
+    make("demo-2","英文（二）","004",5,[8,9],"羅老師","S 101"),
+    make("demo-3","機率論","044",4,[5,6],"黃老師","C 013"),
+    make("demo-4","科學論文導讀（二）","002",4,[3,4],"穆老師","Q 305"),
+    make("demo-5","代數學（一）","040",2,[8,9],"王老師","S 420"),
+    { ...make("demo-6","代數學（一）","040",5,[3],"王老師","S 420"), times:[{day:5,periods:[3],teacher:"王老師",room:"S 420",startTimes:[]},{day:5,periods:[7],teacher:"助教",room:"S 420",startTimes:[]}]},
+    make("demo-7","微分方程（一）","032",2,[3,4],"謝老師","S 420"),
+    make("demo-8","男、女生體育－羽球興趣班","020",1,[7,8],"蔡老師","")
   ].map(normalizeCourse);
 }
 
@@ -221,10 +203,32 @@ function periodsAll(){for(const p of PERIODS)state.display.periods[p.number]=tru
 function clearCourses(){if(!confirm("確定清除課表嗎？學生資料與顯示設定會保留。"))return;state.courses=[];state.importedAt="";state.source="";saveState();fillSettings();renderAll();toast("課表已清除")}
 function resetApp(){if(!confirm("確定清除這個網站保存的全部資料嗎？"))return;localStorage.removeItem(STORAGE_KEY);state=normalizeState({});saveState();fillSettings();closeSheets();renderAll();toast("已清除本網站資料")}
 function syncAction(){
+  const shareReady = "serviceWorker" in navigator;
+  if(shareReady){
+    const url=new URL("https://ilifeapp.az.tku.edu.tw/api/stu/course");
+    window.location.href=url.href;
+    toast("已開啟 TKU iLife API。登入後，使用手機的『分享』把 JSON 文字／檔案分享給『淡江課表』。");
+    return;
+  }
   openSettings();
-  // 直接開始開啟 TKU iLife API，保留設定頁作為操作說明與書籤入口。
-  setTimeout(()=>openTkuCoursePage(),80);
-  toast("已開啟 TKU iLife API；登入後點「抓取 TKU JSON」書籤。");
+  toast("目前瀏覽器無法使用分享同步，仍可手動匯入 JSON。", "error");
+}
+
+function consumePendingSharedJson(){
+  try{
+    const raw=localStorage.getItem("tku_timetable_pending_shared_json_v1");
+    if(!raw)return;
+    localStorage.removeItem("tku_timetable_pending_shared_json_v1");
+    const result=parseAnyCourseJson(raw);
+    if(!result.ok){toast(result.error||"分享的 JSON 無法解析。","error");return;}
+    state.courses=result.courses;
+    state.importedAt=new Date().toISOString();
+    state.source=result.source||"手機分享匯入的 TKU iLife JSON";
+    saveState();
+    renderAll();
+    fillSettings();
+    toast(`已從手機分享匯入 ${state.courses.length} 門課`);
+  }catch(e){toast(`分享 JSON 匯入失敗：${e.message||e}`,"error")}
 }
 
 const TKU_ALLOWED_MESSAGE_ORIGINS = [
@@ -274,43 +278,20 @@ async function copyTkuBookmarklet(){
   }
 }
 
-function courseMergeKey(c){
-  const id=trim(c?.id);
-  if(id) return `id:${id}`;
-  return `name:${trim(c?.name).replace(/\s+/g," ").toLowerCase()}|seat:${trim(c?.seatNumber)}|dept:${trim(c?.department)}|class:${trim(c?.className)}`;
-}
-function mergeImportedCourses(imported){
-  const oldMap=new Map();
-  for(const c of state.courses||[]) oldMap.set(courseMergeKey(c),c);
-  return imported.map(c=>{
-    const old=oldMap.get(courseMergeKey(c));
-    if(!old) return c;
-    return normalizeCourse({
-      ...c,
-      customName: old.customName || "",
-      note: old.note || "",
-      journal: Array.isArray(old.journal) ? old.journal : [],
-      // 保留舊資料中較完整的學校資訊，但以本次 API 新資料優先。
-      description: c.description || old.description || "",
-      pdf: c.pdf || old.pdf || ""
-    });
-  });
-}
-
 function applyCapturedPayload(data){
   if(!data||data.type!=="TKU_TIMETABLE_CAPTURE"||![1,2].includes(data.version))return false;
   let parsed=null;
   if(Array.isArray(data.rawRows)) parsed=parseILifeRows(data.rawRows);
   else if(Array.isArray(data.courses)) parsed={ok:true,courses:data.courses.map(normalizeCourse).filter(Boolean),source:data.source||"淡江課表頁抓取"};
   if(!parsed?.ok||!parsed.courses.length){toast(parsed?.error||"已收到資料，但沒有可用課程。","error");return false;}
-  state.courses=mergeImportedCourses(parsed.courses);
+  state.courses=parsed.courses;
   state.importedAt=data.capturedAt||new Date().toISOString();
   state.source=parsed.source||data.source||"TKU iLife JSON";
   state.semester=state.semester||"淡江課表";
   saveState();
   renderAll();
   fillSettings();
-  const detail=`已收到 ${state.courses.length} 門課、${state.courses.reduce((n,c)=>n+c.times.length,0)} 個上課時段。\n來源：${state.source}\n時間：${fmtDateTime(state.importedAt)}\n自訂課名／備註／記事：已保留`;
+  const detail=`已收到 ${state.courses.length} 門課、${state.courses.reduce((n,c)=>n+c.times.length,0)} 個上課時段。\n來源：${state.source}\n時間：${fmtDateTime(state.importedAt)}`;
   if(el("captureStatus")) el("captureStatus").textContent=detail;
   toast(`已抓到 ${state.courses.length} 門課`);
   return true;
@@ -359,6 +340,6 @@ function bindEvents(){
 }
 
 function registerPwa(){if("serviceWorker" in navigator && location.protocol.startsWith("http")){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js?v=1").catch(()=>{}))}}
-function boot(){try{bindEvents();consumeCaptureInbox();renderAll();registerPwa()}catch(e){console.error(e);toast(`初始化失敗：${e.message}`)}}
+function boot(){try{bindEvents();consumeCaptureInbox();consumePendingSharedJson();renderAll();registerPwa()}catch(e){console.error(e);toast(`初始化失敗：${e.message}`)}}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();
 })();

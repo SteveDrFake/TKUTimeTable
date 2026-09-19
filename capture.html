@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TKU 課表資料接收</title>
+<style>body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:0;padding:32px;background:#f3f4f6;color:#111827}main{max-width:640px;margin:40px auto;background:white;border-radius:20px;padding:28px;box-shadow:0 12px 40px rgba(0,0,0,.08)}h1{font-size:22px;margin-top:0}.muted{color:#6b7280}</style>
+</head>
+<body><main><h1>正在接收 TKU 課表資料…</h1><p class="muted" id="msg">請稍候，完成後會自動回到課表網站。</p></main>
+<script>
+(function(){
+const INBOX_KEY="tku_timetable_capture_inbox_v1";
+function b64uDecode(s){s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";const bin=atob(s);const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);return new TextDecoder().decode(bytes)}
+try{
+ const data=new URLSearchParams(location.hash.slice(1)).get("data");
+ if(!data)throw new Error("沒有收到資料");
+ const payload=JSON.parse(b64uDecode(data));
+ if(payload?.type!=="TKU_TIMETABLE_CAPTURE"||![1,2].includes(payload.version)||(!Array.isArray(payload.rawRows)&&!Array.isArray(payload.courses)))throw new Error("資料格式不正確");
+ localStorage.setItem(INBOX_KEY,JSON.stringify(payload));
+ location.replace("./index.html?captured=1");
+}catch(e){document.getElementById("msg").textContent="接收失敗："+(e.message||e);}
+})();
+</script>
+</body></html>

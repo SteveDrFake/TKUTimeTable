@@ -2,6 +2,7 @@
 "use strict";
 
 const STORAGE_KEY = "tku_timetable_rebuild_v1";
+const CAPTURE_INBOX_KEY = "tku_timetable_capture_inbox_v1";
 const DB_VERSION = 1;
 const DAYS = [
   {key:1,name:"一"},{key:2,name:"二"},{key:3,name:"三"},{key:4,name:"四"},{key:5,name:"五"},{key:6,name:"六"},{key:7,name:"日"}
@@ -26,9 +27,6 @@ let state = normalizeState(loadState());
 let currentWeekOffset = 0;
 let currentCourseId = null;
 let pendingImport = null;
-let captureWindow = null;
-const TKU_API_URL = "https://ilifeapp.az.tku.edu.tw/api/stu/course";
-const BOOKMARKLET = `javascript:(()=>{try{const raw=document.body.innerText||document.body.textContent||"";let data;try{data=JSON.parse(raw)}catch(e){const pre=document.querySelector("pre");if(pre)data=JSON.parse(pre.textContent||"");}if(!Array.isArray(data))throw new Error("目前頁面不是可辨識的 TKU JSON");if(window.opener)window.opener.postMessage({type:"TKU_TIMETABLE_JSON",data},"https://stevedrfake.github.io");else alert("找不到原課表頁面，請從課表網站按「開啟 TKU iLife 課表 API」後再執行此書籤。");}catch(e){alert("TKU 課表抓取失敗："+e.message)}})();`;
 let deferredInstallPrompt = null;
 
 function el(id){return document.getElementById(id)}
@@ -139,46 +137,6 @@ function fillSettings(){
 }
 function openSettings(){fillSettings();openSheet("settingsSheet")}
 
-function setCaptureStatus(text){
-  const n=document.getElementById("captureStatus");
-  if(n)n.textContent=text;
-}
-function openTkuApi(){
-  setCaptureStatus("正在開啟 TKU iLife 課表 API…\n如果跳出 TKU 登入，請先完成登入，直到頁面顯示 JSON。");
-  captureWindow=window.open(TKU_API_URL,"tkuCourseApi","width=1100,height=800");
-  if(!captureWindow){
-    setCaptureStatus("瀏覽器阻擋了新視窗。請允許本站的彈出視窗後再試。\n也可以直接開啟："+TKU_API_URL);
-    return;
-  }
-  setTimeout(()=>{try{captureWindow.focus()}catch{}},300);
-}
-async function copyCaptureBookmark(){
-  try{
-    await navigator.clipboard.writeText(BOOKMARKLET);
-    setCaptureStatus("已複製書籤程式。\n請建立瀏覽器書籤，例如「TKU 抓課表」，把網址貼成剛剛複製的內容。\n完成後在 TKU JSON 頁面按這個書籤即可把資料傳回本站。");
-  }catch(e){
-    const ta=document.createElement("textarea");ta.value=BOOKMARKLET;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();
-    setCaptureStatus("已複製書籤程式。\n請建立瀏覽器書籤並把網址貼上。");
-  }
-}
-function handleTkuJsonMessage(event){
-  if(event.source!==captureWindow)return;
-  if(!["https://ilifeapp.az.tku.edu.tw","https://ilifeapi.az.tku.edu.tw"].includes(event.origin))return;
-  if(!event.data||event.data.type!=="TKU_TIMETABLE_JSON")return;
-  const parsed=parseAnyCourseJson(event.data.data);
-  if(!parsed.ok){setCaptureStatus("收到資料，但解析失敗：\n"+parsed.error);return;}
-  pendingImport=parsed;
-  state.courses=parsed.courses;
-  state.importedAt=new Date().toISOString();
-  state.source=parsed.source||"TKU iLife API";
-  saveState();
-  fillSettings();
-  renderAll();
-  setCaptureStatus(`✅ 已從 TKU iLife API 取得資料。\n課程：${parsed.courses.length} 門\n有效資料列：${parsed.rowCount||"—"}\n已自動保存到本機。`);
-  toast(`已同步 ${parsed.courses.length} 門課`);
-  try{captureWindow.close()}catch{}
-}
-
 function parseAnyCourseJson(input){
   let data=input;
   if(typeof input==="string"){try{data=JSON.parse(input)}catch(e){return {ok:false,error:`JSON 格式錯誤：${e.message}`}}}
@@ -244,7 +202,104 @@ function periodsDay(){for(const p of PERIODS)state.display.periods[p.number]=p.n
 function periodsAll(){for(const p of PERIODS)state.display.periods[p.number]=true;saveState();fillSettings();renderSchedule()}
 function clearCourses(){if(!confirm("確定清除課表嗎？學生資料與顯示設定會保留。"))return;state.courses=[];state.importedAt="";state.source="";saveState();fillSettings();renderAll();toast("課表已清除")}
 function resetApp(){if(!confirm("確定清除這個網站保存的全部資料嗎？"))return;localStorage.removeItem(STORAGE_KEY);state=normalizeState({});saveState();fillSettings();closeSheets();renderAll();toast("已清除本網站資料")}
-function syncAction(){openSettings();openTkuApi();}
+function syncAction(){
+  openSettings();
+  toast("請使用『從淡江課表頁抓取』，避免瀏覽器跨來源 CORS 限制。");
+}
+
+const TKU_ALLOWED_MESSAGE_ORIGINS = [
+  "https://sso.tku.edu.tw",
+  "https://sinfo.ais.tku.edu.tw",
+  "http://sinfo.ais.tku.edu.tw"
+];
+
+function tkuCaptureBookmarklet(){
+  const targetOrigin=location.origin;
+  const captureUrl=new URL("./capture.html",location.href).href;
+  const code=`javascript:(()=>{try{\
+const clean=s=>String(s??"").replace(/\\s+/g," ").trim();\
+const enc=s=>{const bytes=new TextEncoder().encode(s),parts=[];for(let i=0;i<bytes.length;i++)parts.push(String.fromCharCode(bytes[i]));return btoa(parts.join("")).replace(/\\+/g,"-").replace(/\\//g,"_").replace(/=+$/g,"")};\
+const rowsFromJson=v=>{if(Array.isArray(v))return v;if(v&&typeof v==="object"){for(const k of ["data","rows","items","result","courses","list"]){if(Array.isArray(v[k]))return v[k]} }return null};\
+const body=clean(document.body?.innerText||document.documentElement?.innerText||"");\
+let parsed=null;try{parsed=JSON.parse(body)}catch{}\
+const rows=rowsFromJson(parsed);\
+if(rows){\
+  const payload={type:"TKU_TIMETABLE_CAPTURE",version:2,source:"TKU iLife API JSON",capturedAt:new Date().toISOString(),rawRows:rows};\
+  const opener=window.opener;\
+  if(opener&&!opener.closed){try{opener.postMessage(payload,"${targetOrigin}");alert("已抓到 "+rows.length+" 筆 TKU iLife 資料，已送回課表網站。請切回課表頁面。" );return}catch{}}\
+  const u="${captureUrl}#data="+enc(JSON.stringify(payload));\
+  location.href=u;\
+  return;\
+}\
+throw new Error("目前頁面不是可解析的 TKU iLife JSON。請先從課表網站按『開啟 TKU iLife 課表 API』，登入後直到畫面顯示 [ ... ] JSON 再執行此書籤。" );\
+}catch(e){alert("抓取失敗："+(e?.message||e))}})();void 0;`;
+  return code;
+}
+
+function openTkuCoursePage(){
+  const url=trim(el("tkuCourseUrlInput").value)||"https://ilifeapp.az.tku.edu.tw/api/stu/course";
+  try{new URL(url); }catch{toast("淡江課表網址格式不正確");return;}
+  const win=window.open(url,"tkuCourseCapture","noopener=false,width=1200,height=900");
+  if(!win){toast("瀏覽器阻擋了新視窗，請允許本網站開啟新視窗。")}
+  else {toast("已開啟淡江課表；登入並進入課表後，點你的抓取書籤。")}
+}
+
+async function copyTkuBookmarklet(){
+  const code=tkuCaptureBookmarklet();
+  try{
+    await navigator.clipboard.writeText(code);
+    toast("已複製。請建立一個書籤，名稱可填『抓取淡江課表』，網址貼上剛複製的內容。");
+  }catch{
+    const ta=document.createElement("textarea");ta.value=code;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();toast("已複製。請建立書籤並把網址貼上。");
+  }
+}
+
+function applyCapturedPayload(data){
+  if(!data||data.type!=="TKU_TIMETABLE_CAPTURE"||![1,2].includes(data.version))return false;
+  let parsed=null;
+  if(Array.isArray(data.rawRows)) parsed=parseILifeRows(data.rawRows);
+  else if(Array.isArray(data.courses)) parsed={ok:true,courses:data.courses.map(normalizeCourse).filter(Boolean),source:data.source||"淡江課表頁抓取"};
+  if(!parsed?.ok||!parsed.courses.length){toast(parsed?.error||"已收到資料，但沒有可用課程。","error");return false;}
+  state.courses=parsed.courses;
+  state.importedAt=data.capturedAt||new Date().toISOString();
+  state.source=parsed.source||data.source||"TKU iLife JSON";
+  state.semester=state.semester||"淡江課表";
+  saveState();
+  renderAll();
+  fillSettings();
+  const detail=`已收到 ${state.courses.length} 門課、${state.courses.reduce((n,c)=>n+c.times.length,0)} 個上課時段。\n來源：${state.source}\n時間：${fmtDateTime(state.importedAt)}`;
+  if(el("captureStatus")) el("captureStatus").textContent=detail;
+  toast(`已抓到 ${state.courses.length} 門課`);
+  return true;
+}
+function handleTkuCaptureMessage(event){
+  if(!TKU_ALLOWED_MESSAGE_ORIGINS.includes(event.origin))return;
+  applyCapturedPayload(event.data);
+}
+function consumeCaptureInbox(){
+  try{
+    const raw=localStorage.getItem(CAPTURE_INBOX_KEY);
+    if(!raw)return;
+    localStorage.removeItem(CAPTURE_INBOX_KEY);
+    const payload=JSON.parse(raw);
+    applyCapturedPayload(payload);
+  }catch(e){
+    localStorage.removeItem(CAPTURE_INBOX_KEY);
+    toast(`接收 TKU JSON 失敗：${e.message||e}`,"error");
+  }
+}
+
+function testCaptureMessage(){
+  applyCapturedPayload({type:"TKU_TIMETABLE_CAPTURE",version:2,capturedAt:new Date().toISOString(),source:"測試 JSON",rawRows:[
+    {weekno:"1",sessno:"01",seatno:"033",ch_cos_name:"高等微積分",teach_name:"余成義",room:"S 420",sesstime:"08:10"},
+    {weekno:"1",sessno:"02",seatno:"033",ch_cos_name:"高等微積分",teach_name:"余成義",room:"S 420",sesstime:"09:10"},
+    {weekno:"3",sessno:"01",seatno:"033",ch_cos_name:"高等微積分",teach_name:"余成義",room:"S 420",sesstime:"08:10"},
+    {weekno:"3",sessno:"02",seatno:"033",ch_cos_name:"高等微積分",teach_name:"助教",room:"S 420",sesstime:"09:10"},
+    {weekno:"2",sessno:"08",seatno:"040",ch_cos_name:"代數學（一）",teach_name:"王",room:"S 420",sesstime:"15:10"},
+    {weekno:"2",sessno:"09",seatno:"040",ch_cos_name:"代數學（一）",teach_name:"王",room:"S 420",sesstime:"16:10"}
+  ]});
+}
+
 function renderAll(){renderHeader();renderSchedule();}
 function showInstallHelp(){alert("手機安裝：在手機瀏覽器開啟本網站，使用瀏覽器的「加入主畫面／安裝 App」功能。此網站的資料會保存在你的裝置本機。")}
 
@@ -252,14 +307,15 @@ function bindEvents(){
   el("settingsButton").addEventListener("click",openSettings);el("syncButton").addEventListener("click",syncAction);el("prevWeek").addEventListener("click",()=>{currentWeekOffset--;renderHeader();renderSchedule()});el("nextWeek").addEventListener("click",()=>{currentWeekOffset++;renderHeader();renderSchedule()});el("weekTitleButton").addEventListener("click",()=>{currentWeekOffset=0;renderHeader();renderSchedule()});
   el("saveProfileButton").addEventListener("click",saveProfile);el("weekdaysAllButton").addEventListener("click",quickDays);el("periodsDayButton").addEventListener("click",periodsDay);el("periodsAllButton").addEventListener("click",periodsAll);
   el("showSeatInput").addEventListener("change",e=>{state.display.showSeat=e.target.checked;saveState();renderSchedule()});el("showRoomInput").addEventListener("change",e=>{state.display.showRoom=e.target.checked;saveState();renderSchedule()});el("showTeacherInput").addEventListener("change",e=>{state.display.showTeacher=e.target.checked;saveState();renderSchedule()});
-  el("openTkuApiButton").addEventListener("click",openTkuApi);el("copyCaptureBookmarkButton").addEventListener("click",copyCaptureBookmark);el("openImportButton").addEventListener("click",()=>{el("apiJsonInput").value="";el("importPreview").textContent="等待匯入。";pendingImport=null;openSheet("importSheet")});el("previewImportButton").addEventListener("click",previewImport);el("commitImportButton").addEventListener("click",commitImport);
+  el("openImportButton").addEventListener("click",()=>{el("apiJsonInput").value="";el("importPreview").textContent="等待匯入。";pendingImport=null;openSheet("importSheet")});el("previewImportButton").addEventListener("click",previewImport);el("commitImportButton").addEventListener("click",commitImport);
+  el("openTkuCoursePageButton").addEventListener("click",openTkuCoursePage);el("copyTkuBookmarkletButton").addEventListener("click",copyTkuBookmarklet);el("testCaptureMessageButton").addEventListener("click",testCaptureMessage);window.addEventListener("message",handleTkuCaptureMessage);
   el("loadDemoButton").addEventListener("click",()=>{state.courses=sampleState();state.semester=state.semester||"範例學期";state.importedAt=new Date().toISOString();state.source="內建範例";saveState();fillSettings();renderAll();toast("已載入範例課表")});el("exportButton").addEventListener("click",exportData);el("jsonFileInput").addEventListener("change",e=>{const f=e.target.files?.[0];if(f)importFile(f);e.target.value=""});el("clearCoursesButton").addEventListener("click",clearCourses);el("resetAppButton").addEventListener("click",resetApp);
   el("cancelCourseButton").addEventListener("click",closeSheets);el("saveCourseButton").addEventListener("click",saveCurrentCourse);el("deleteCourseButton").addEventListener("click",deleteCurrentCourse);el("addJournalButton").addEventListener("click",addJournal);el("installHelpButton").addEventListener("click",showInstallHelp);
-  el("overlay").addEventListener("click",e=>{if(e.target===el("overlay"))closeSheets()});document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",closeSheets));window.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheets()});window.addEventListener("message",handleTkuJsonMessage);window.addEventListener("online",renderHeader);window.addEventListener("offline",renderHeader);
+  el("overlay").addEventListener("click",e=>{if(e.target===el("overlay"))closeSheets()});document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",closeSheets));window.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheets()});window.addEventListener("online",renderHeader);window.addEventListener("offline",renderHeader);
   window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredInstallPrompt=e});
 }
 
-function registerPwa(){if("serviceWorker" in navigator && location.protocol.startsWith("http")){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js?v=2").catch(()=>{}))}}
-function boot(){try{bindEvents();renderAll();registerPwa()}catch(e){console.error(e);toast(`初始化失敗：${e.message}`)}}
+function registerPwa(){if("serviceWorker" in navigator && location.protocol.startsWith("http")){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js?v=1").catch(()=>{}))}}
+function boot(){try{bindEvents();consumeCaptureInbox();renderAll();registerPwa()}catch(e){console.error(e);toast(`初始化失敗：${e.message}`)}}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);else boot();
 })();
